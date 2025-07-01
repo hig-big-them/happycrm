@@ -1,0 +1,44 @@
+{
+  "table_schema": "auth",
+  "table_name": "audit_log_entries",
+  "columns": [
+    {
+      "column_name": "ip_address",
+      "data_type": "character varying",
+      "is_nullable": "NO",
+      "column_default": "''::character varying",
+      "constraints": null
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "payload",
+      "data_type": "json",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "instance_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    }
+  ],
+  "foreign_keys": [],
+  "rls_policies": [],
+  "auth_references": []
+}

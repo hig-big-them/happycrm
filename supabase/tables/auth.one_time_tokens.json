@@ -1,0 +1,58 @@
+{
+  "table_schema": "auth",
+  "table_name": "one_time_tokens",
+  "columns": [
+    {
+      "column_name": "token_type",
+      "data_type": "USER-DEFINED",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "token_hash",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "constraints": null
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "constraints": null
+    },
+    {
+      "column_name": "relates_to",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    }
+  ],
+  "foreign_keys": [],
+  "rls_policies": [],
+  "auth_references": []
+}

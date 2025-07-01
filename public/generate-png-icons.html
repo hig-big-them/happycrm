@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PNG Icon Generator</title>
+</head>
+<body>
+    <h2>Happy CRM PNG Icon Generator</h2>
+    <canvas id="canvas192" width="192" height="192" style="border: 1px solid black; margin: 10px;"></canvas>
+    <canvas id="canvas512" width="512" height="512" style="border: 1px solid black; margin: 10px;"></canvas>
+    <br>
+    <button onclick="generateAndDownload()">Generate & Download PNG Icons</button>
+    
+    <script>
+        function drawIcon(canvas, size) {
+            const ctx = canvas.getContext('2d');
+            const scale = size / 256;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, size, size);
+            
+            // Background
+            ctx.fillStyle = '#4F46E5';
+            ctx.fillRect(0, 0, size, size);
+            
+            // Rounded corners effect (simple)
+            ctx.globalCompositeOperation = 'source-atop';
+            
+            // White content area
+            ctx.fillStyle = 'rgba(255,255,255,0.9)';
+            ctx.fillRect(32 * scale, 64 * scale, 192 * scale, 128 * scale);
+            
+            // CRM elements (circles and rectangles)
+            ctx.fillStyle = '#4F46E5';
+            ctx.beginPath();
+            ctx.arc(80 * scale, 96 * scale, 12 * scale, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.fillStyle = '#10B981';
+            ctx.beginPath();
+            ctx.arc(80 * scale, 136 * scale, 12 * scale, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            ctx.fillStyle = '#F59E0B';
+            ctx.beginPath();
+            ctx.arc(80 * scale, 176 * scale, 12 * scale, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Text bars
+            ctx.fillStyle = '#6B7280';
+            ctx.fillRect(104 * scale, 88 * scale, 48 * scale, 8 * scale);
+            ctx.fillRect(104 * scale, 128 * scale, 48 * scale, 8 * scale);
+            ctx.fillRect(104 * scale, 168 * scale, 48 * scale, 8 * scale);
+            
+            // CRM text
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${24 * scale}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.fillText('CRM', 128 * scale, 40 * scale);
+            
+            ctx.globalCompositeOperation = 'source-over';
+        }
+        
+        function generateAndDownload() {
+            // Generate 192x192
+            const canvas192 = document.getElementById('canvas192');
+            drawIcon(canvas192, 192);
+            
+            // Generate 512x512
+            const canvas512 = document.getElementById('canvas512');
+            drawIcon(canvas512, 512);
+            
+            // Download 192x192
+            setTimeout(() => {
+                const link192 = document.createElement('a');
+                link192.download = 'icon-192.png';
+                link192.href = canvas192.toDataURL('image/png');
+                link192.click();
+            }, 500);
+            
+            // Download 512x512
+            setTimeout(() => {
+                const link512 = document.createElement('a');
+                link512.download = 'icon-512.png';
+                link512.href = canvas512.toDataURL('image/png');
+                link512.click();
+            }, 1000);
+            
+            alert('Icons generated! Please save both PNG files to the public/ folder.');
+        }
+        
+        // Auto generate on load
+        window.onload = function() {
+            const canvas192 = document.getElementById('canvas192');
+            const canvas512 = document.getElementById('canvas512');
+            drawIcon(canvas192, 192);
+            drawIcon(canvas512, 512);
+        };
+    </script>
+</body>
+</html> 

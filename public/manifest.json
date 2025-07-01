@@ -1,0 +1,77 @@
+{
+  "name": "Happy CRM - Müşteri İlişkileri",
+  "short_name": "Happy CRM",
+  "description": "Müşteri İlişkileri Yönetim Sistemi - Lead tracking, Pipeline management, Messaging",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4F46E5",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "categories": ["business", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512.png", 
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png", 
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Yeni Lead Ekle",
+      "short_name": "Yeni Lead",
+      "url": "/leads/new",
+      "icons": [{"src": "/icon-192.png", "sizes": "192x192"}]
+    },
+    {
+      "name": "Pipeline Görünümü",
+      "short_name": "Pipeline",
+      "url": "/pipelines",
+      "icons": [{"src": "/icon-192.png", "sizes": "192x192"}]
+    },
+    {
+      "name": "Mesajlaşma",
+      "short_name": "Mesaj",
+      "url": "/messaging",
+      "icons": [{"src": "/icon-192.png", "sizes": "192x192"}]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Ana ekran görünümü"
+    }
+  ],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "lang": "tr",
+  "dir": "ltr"
+} 

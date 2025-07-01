@@ -1,0 +1,86 @@
+{
+  "table_schema": "auth",
+  "table_name": "sessions",
+  "columns": [
+    {
+      "column_name": "not_after",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "aal",
+      "data_type": "USER-DEFINED",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "tag",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "ip",
+      "data_type": "inet",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "user_agent",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "refreshed_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "factor_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    }
+  ],
+  "foreign_keys": [],
+  "rls_policies": [],
+  "auth_references": []
+}

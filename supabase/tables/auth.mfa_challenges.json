@@ -1,0 +1,58 @@
+{
+  "table_schema": "auth",
+  "table_name": "mfa_challenges",
+  "columns": [
+    {
+      "column_name": "verified_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "factor_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "web_authn_session_data",
+      "data_type": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "otp_code",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "ip_address",
+      "data_type": "inet",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    }
+  ],
+  "foreign_keys": [],
+  "rls_policies": [],
+  "auth_references": []
+}

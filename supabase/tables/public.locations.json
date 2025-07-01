@@ -1,0 +1,89 @@
+{
+  "table_schema": "public",
+  "table_name": "locations",
+  "columns": [
+    {
+      "column_name": "name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": [
+        "locations_name_key"
+      ]
+    },
+    {
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()",
+      "constraints": [
+        "locations_pkey",
+        "transfers_location_from_id_fkey",
+        "transfers_location_to_id_fkey"
+      ]
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "constraints": null
+    },
+    {
+      "column_name": "address",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    }
+  ],
+  "foreign_keys": [],
+  "rls_policies": [
+    {
+      "policy_name": "Anonymous users can delete locations",
+      "command": "d",
+      "roles": [
+        "16478"
+      ],
+      "using_clause": "{CONST :consttype 16 :consttypmod -1 :constcollid 0 :constlen 1 :constbyval true :constisnull false :location 3307 :constvalue 1 [ 1 0 0 0 0 0 0 0 ]}",
+      "with_check_clause": null
+    },
+    {
+      "policy_name": "Anonymous users can insert new locations",
+      "command": "a",
+      "roles": [
+        "16478"
+      ],
+      "using_clause": null,
+      "with_check_clause": "{CONST :consttype 16 :consttypmod -1 :constcollid 0 :constlen 1 :constbyval true :constisnull false :location 3050 :constvalue 1 [ 1 0 0 0 0 0 0 0 ]}"
+    },
+    {
+      "policy_name": "Anonymous users can update locations",
+      "command": "w",
+      "roles": [
+        "16478"
+      ],
+      "using_clause": "{CONST :consttype 16 :consttypmod -1 :constcollid 0 :constlen 1 :constbyval true :constisnull false :location 3168 :constvalue 1 [ 1 0 0 0 0 0 0 0 ]}",
+      "with_check_clause": "{CONST :consttype 16 :consttypmod -1 :constcollid 0 :constlen 1 :constbyval true :constisnull false :location 3189 :constvalue 1 [ 1 0 0 0 0 0 0 0 ]}"
+    },
+    {
+      "policy_name": "Allow insert/update/delete for superusers",
+      "command": "*",
+      "roles": [
+        "0"
+      ],
+      "using_clause": "{OPEXPR :opno 98 :opfuncid 67 :opresulttype 16 :opretset false :opcollid 0 :inputcollid 100 :args ({OPEXPR :opno 3477 :opfuncid 3214 :opresulttype 25 :opretset false :opcollid 100 :inputcollid 100 :args ({OPEXPR :opno 3211 :opfuncid 3478 :opresulttype 3802 :opretset false :opcollid 0 :inputcollid 100 :args ({FUNCEXPR :funcid 17591 :funcresulttype 3802 :funcretset false :funcvariadic false :funcformat 0 :funccollid 0 :inputcollid 0 :args <> :location 3903} {CONST :consttype 25 :consttypmod -1 :constcollid 100 :constlen -1 :constbyval false :constisnull false :location 3917 :constvalue 16 [ 64 0 0 0 97 112 112 95 109 101 116 97 100 97 116 97 ]}) :location 3914} {CONST :consttype 25 :consttypmod -1 :constcollid 100 :constlen -1 :constbyval false :constisnull false :location 3936 :constvalue 8 [ 32 0 0 0 114 111 108 101 ]}) :location 3932} {CONST :consttype 25 :consttypmod -1 :constcollid 100 :constlen -1 :constbyval false :constisnull false :location 3946 :constvalue 13 [ 52 0 0 0 115 117 112 101 114 117 115 101 114 ]}) :location 3944}",
+      "with_check_clause": "{OPEXPR :opno 98 :opfuncid 67 :opresulttype 16 :opretset false :opcollid 0 :inputcollid 100 :args ({OPEXPR :opno 3477 :opfuncid 3214 :opresulttype 25 :opretset false :opcollid 100 :inputcollid 100 :args ({OPEXPR :opno 3211 :opfuncid 3478 :opresulttype 3802 :opretset false :opcollid 0 :inputcollid 100 :args ({FUNCEXPR :funcid 17591 :funcresulttype 3802 :funcretset false :funcvariadic false :funcformat 0 :funccollid 0 :inputcollid 0 :args <> :location 3975} {CONST :consttype 25 :consttypmod -1 :constcollid 100 :constlen -1 :constbyval false :constisnull false :location 3989 :constvalue 16 [ 64 0 0 0 97 112 112 95 109 101 116 97 100 97 116 97 ]}) :location 3986} {CONST :consttype 25 :consttypmod -1 :constcollid 100 :constlen -1 :constbyval false :constisnull false :location 4008 :constvalue 8 [ 32 0 0 0 114 111 108 101 ]}) :location 4004} {CONST :consttype 25 :consttypmod -1 :constcollid 100 :constlen -1 :constbyval false :constisnull false :location 4018 :constvalue 13 [ 52 0 0 0 115 117 112 101 114 117 115 101 114 ]}) :location 4016}"
+    },
+    {
+      "policy_name": "Anonymous users can view all locations",
+      "command": "r",
+      "roles": [
+        "16478"
+      ],
+      "using_clause": "{CONST :consttype 16 :consttypmod -1 :constcollid 0 :constlen 1 :constbyval true :constisnull false :location 2923 :constvalue 1 [ 1 0 0 0 0 0 0 0 ]}",
+      "with_check_clause": null
+    }
+  ],
+  "auth_references": []
+}

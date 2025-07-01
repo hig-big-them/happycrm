@@ -1,0 +1,79 @@
+{
+  "table_schema": "storage",
+  "table_name": "s3_multipart_uploads_parts",
+  "columns": [
+    {
+      "column_name": "bucket_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()",
+      "constraints": null
+    },
+    {
+      "column_name": "upload_id",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "size",
+      "data_type": "bigint",
+      "is_nullable": "NO",
+      "column_default": "0",
+      "constraints": null
+    },
+    {
+      "column_name": "part_number",
+      "data_type": "integer",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "key",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "etag",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "owner_id",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "version",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "constraints": null
+    }
+  ],
+  "foreign_keys": [],
+  "rls_policies": [],
+  "auth_references": []
+}

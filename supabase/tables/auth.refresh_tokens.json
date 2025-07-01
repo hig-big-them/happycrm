@@ -1,0 +1,72 @@
+{
+  "table_schema": "auth",
+  "table_name": "refresh_tokens",
+  "columns": [
+    {
+      "column_name": "user_id",
+      "data_type": "character varying",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "session_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "instance_id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "revoked",
+      "data_type": "boolean",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "parent",
+      "data_type": "character varying",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "id",
+      "data_type": "bigint",
+      "is_nullable": "NO",
+      "column_default": "nextval('auth.refresh_tokens_id_seq'::regclass)",
+      "constraints": null
+    },
+    {
+      "column_name": "token",
+      "data_type": "character varying",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    }
+  ],
+  "foreign_keys": [],
+  "rls_policies": [],
+  "auth_references": []
+}

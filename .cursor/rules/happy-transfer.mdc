@@ -1,0 +1,233 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+    You are an expert developer in TypeScript, Node.js, Next.js 14 App Router, React, Supabase, GraphQL, Genql, Tailwind CSS, Radix UI, and Shadcn UI.
+
+    Key Principles
+
+    * Write concise, technical responses with accurate TypeScript examples.
+    * Use functional, declarative programming. Avoid classes.
+    * Prefer iteration and modularization over duplication.
+    * Use descriptive variable names with auxiliary verbs (e.g., isLoading, hasError).
+    * Use lowercase with dashes for directories (e.g., components/auth-wizard).
+    * Favor named exports for components.
+    * Use the Receive an Object, Return an Object (RORO) pattern.
+
+    JavaScript/TypeScript
+
+    * Use "function" keyword for pure functions. Omit semicolons.
+    * Use TypeScript for all code. Prefer interfaces over types.
+    * File structure: Exported component, subcomponents, helpers, static content, types.
+    * Avoid unnecessary curly braces in conditional statements.
+    * For single-line statements in conditionals, omit curly braces.
+    * Use concise, one-line syntax for simple conditional statements (e.g., if (condition) doSomething()).
+
+    Error Handling and Validation
+
+    * Prioritize error handling and edge cases:
+
+    * Handle errors and edge cases at the beginning of functions.
+    * Use early returns for error conditions to avoid deeply nested if statements.
+    * Place the happy path last in the function for improved readability.
+    * Avoid unnecessary else statements; use if-return pattern instead.
+    * Use guard clauses to handle preconditions and invalid states early.
+    * Implement proper error logging and user-friendly error messages.
+    * Consider using custom error types or error factories for consistent error handling.
+
+    AI SDK
+
+    * Use the Vercel AI SDK UI for implementing streaming chat UI.
+    * Use the Vercel AI SDK Core to interact with language models.
+    * Use the Vercel AI SDK RSC and Stream Helpers to stream and help with the generations.
+    * Implement proper error handling for AI responses and model switching.
+    * Implement fallback mechanisms for when an AI model is unavailable.
+    * Handle rate limiting and quota exceeded scenarios gracefully.
+    * Provide clear error messages to users when AI interactions fail.
+    * Implement proper input sanitization for user messages before sending to AI models.
+    * Use environment variables for storing API keys and sensitive information.
+
+    React/Next.js
+
+    * Use functional components and TypeScript interfaces.
+    * Use declarative JSX.
+    * Use function, not const, for components.
+    * Use Shadcn UI, Radix, and Tailwind CSS for components and styling.
+    * Implement responsive design with Tailwind CSS.
+    * Use mobile-first approach for responsive design.
+    * Place static content and interfaces at file end.
+    * Use content variables for static content outside render functions.
+    * Minimize 'use client', 'useEffect', and 'setState'. Favor React Server Components (RSC).
+    * Use Zod for form validation.
+    * Wrap client components in Suspense with fallback.
+    * Use dynamic loading for non-critical components.
+    * Optimize images: WebP format, size data, lazy loading.
+    * Model expected errors as return values: Avoid using try/catch for expected errors in Server Actions.
+    * Use error boundaries for unexpected errors: Implement error boundaries using error.tsx and global-error.tsx files.
+    * Use useActionState with react-hook-form for form validation.
+    * Code in services/ dir always throw user-friendly errors that can be caught and shown to the user.
+    * Use next-safe-action for all server actions.
+    * Implement type-safe server actions with proper validation.
+    * Handle errors gracefully and return appropriate responses.
+
+    Supabase and GraphQL
+
+    * Use the Supabase client for database interactions and real-time subscriptions.
+    * Implement Row Level Security (RLS) policies for fine-grained access control.
+    * Use Supabase Auth for user authentication and management.
+    * Leverage Supabase Storage for file uploads and management.
+    * Use Supabase Edge Functions for serverless API endpoints when needed.
+    * Implement proper authentication and authorization using Supabase RLS and Policies.
+
+    **Database Migrations (Schema Changes)**
+
+    * All schema changes (tables, columns, relationships, RLS policies, etc.) are managed using **Supabase CLI** and stored as SQL migration files.
+    * To create a new migration file, run the following command in the `happy-transfer` project root:
+
+    ```bash
+    supabase migration new your_migration_name
+    ```
+
+    - This creates a file under the `happy-transfer/supabase/migrations/` directory using the format:
+    `YYYYMMDDHHMMSS_your_migration_name.sql`
+    - After editing and testing the SQL locally, apply the changes to the Supabase database by running this command from the `happy-transfer` project root:
+
+    ```bash
+    supabase db push
+    ```
+    - This command executes all new migration files in order.
+
+    > ⚠️ **Caution:** `supabase db push` applies irreversible changes. Avoid running it directly on production without proper review.
+
+    **Supabase Schema Export and Synchronization**
+
+    * Always verify the current table structure from the Supabase Dashboard or CLI before editing or applying schema changes.
+    * After running `supabase db push`, export the updated schema to JSON files in `E:\happy-transfer\supabase\tables`:
+
+    ```bash
+    supabase db dump --schema public --table table_name > supabase/tables/table_name.json
+    ```
+    * Replace `table_name` with the name of the updated table (e.g., `agencies`, `users`).
+    * If a JSON file for the table already exists, overwrite it to reflect the new schema.
+    * File naming must be lowercase and match the table name (e.g., `agencies.json`).
+    * After exporting JSON, regenerate types with:
+
+    ```bash
+    supabase gen types typescript --project-id srehrvldejcgjgxgkjxa --schema public > types/supabase.ts
+    ```
+    * Ensure JSON exports match the structure in `happy-transfer/supabase/output/` for consistency.
+
+    > ⚠️ **Caution:** Only export schemas *after* successful migration application to avoid mismatches with the live database.
+
+    **Generating and Using TypeScript Types**
+
+    * To ensure type safety when interacting with Supabase, generate TypeScript definitions that match your schema.
+    * Run the following CLI command from the `happy-transfer` project root to generate types. The project ID `srehrvldejcgjgxgkjxa` is used here:
+
+    ```bash
+    supabase gen types typescript --project-id srehrvldejcgjgxgkjxa --schema public > types/supabase.ts
+    ```
+    * This generates types for tables, enums, and functions in the `public` schema and writes them to `happy-transfer/types/supabase.ts`.
+    * Import this `Database` type wherever Supabase clients are used (assuming `@/` resolves to the `happy-transfer` root, as per typical Next.js `tsconfig.json` path aliases):
+
+    ```ts
+    import { Database } from '@/types/supabase'
+    ```
+    * Example usage in a server action:
+
+    ```ts
+    const supabase = createServerActionClient<Database>({ cookies })
+    ```
+    * ✅ Centralize all Supabase-related types in `happy-transfer/types/supabase.ts` and always regenerate types after schema changes.
+    * For a detailed view of the current table structures, JSON representations exported from Supabase can be found in the `happy-transfer/supabase/output/` directory. These files (e.g., `public.agencies.json`) reflect the live schema and can be a helpful reference.
+
+    **Supabase Client Usage**
+
+    * Use the `@supabase/auth-helpers-nextjs` package for Next.js server-side operations within the `happy-transfer` application:
+
+    * `createServerActionClient`
+    * `createRouteHandlerClient`
+    * `createServerComponentClient`
+    * Always provide the `Database` type as a generic to enable full IntelliSense and type safety during database operations (select, insert, update, delete).
+
+    **Project Structure for Supabase Components within `happy-transfer`**
+
+    | Component        | Path Within `happy-transfer` |
+    | ---------------- | ---------------------------- |
+    | Migrations       | `supabase/migrations/`       |
+    | Generated Types  | `types/supabase.ts`          |
+    | Supabase Helpers | `lib/supabase/`              |
+    | Server Actions   | `lib/actions/`               |
+
+    **GraphQL (Genql)**
+
+    * Use the generated GraphQL client (Genql) for type-safe API interactions with Supabase if GraphQL is chosen for certain parts of the API.
+    * Optimize GraphQL queries to fetch only necessary data.
+    * Use Genql queries for fetching large datasets efficiently.
+
+    Key Conventions
+
+    1. Rely on Next.js App Router for state changes and routing.
+    2. Prioritize Web Vitals (LCP, CLS, FID).
+    3. Minimize 'use client' usage:
+
+    * Prefer server components and Next.js SSR features.
+    * Use 'use client' only for Web API access in small components.
+    * Avoid using 'use client' for data fetching or state management.
+
+    4. Follow the monorepo structure:
+
+    * Place shared code in the 'packages' directory.
+    * Keep app-specific code in the 'apps' directory.
+
+    5. Use Taskfile commands for development and deployment tasks.
+    6. Adhere to the defined database schema and use enum tables for predefined values.
+
+    Naming Conventions
+
+    * Booleans: Use auxiliary verbs such as 'does', 'has', 'is', and 'should' (e.g., isDisabled, hasError).
+    * Filenames: Use lowercase with dash separators (e.g., auth-wizard.tsx).
+    * File extensions: Use .config.ts, .test.ts, .context.tsx, .type.ts, .hook.ts as appropriate.
+
+    Component Structure
+
+    * Break down components into smaller parts with minimal props.
+    * Suggest micro folder structure for components.
+    * Use composition to build complex components.
+    * Follow the order: component declaration, styled components (if any), TypeScript types.
+
+    Data Fetching and State Management
+
+    * Use React Server Components for data fetching when possible.
+    * Implement the preload pattern to prevent waterfalls.
+    * Leverage Supabase for real-time data synchronization and state management.
+    * Use Vercel KV for chat history, rate limiting, and session storage when appropriate.
+
+    Styling
+
+    * Use Tailwind CSS for styling, following the Utility First approach.
+    * Utilize the Class Variance Authority (CVA) for managing component variants.
+
+    Testing
+
+    * Implement unit tests for utility functions and hooks.
+    * Use integration tests for complex components and pages.
+    * Implement end-to-end tests for critical user flows.
+    * Use Supabase local development for testing database interactions.
+
+    Accessibility
+
+    * Ensure interfaces are keyboard navigable.
+    * Implement proper ARIA labels and roles for components.
+    * Ensure color contrast ratios meet WCAG standards for readability.
+
+    Documentation
+
+    * Provide clear and concise comments for complex logic.
+    * Use JSDoc comments for functions and components to improve IDE intellisense.
+    * Keep the README files up-to-date with setup instructions and project overview.
+    * Document Supabase schema, RLS policies, and Edge Functions when used.
+
+    Refer to Next.js documentation for Data Fetching, Rendering, and Routing best practices and to the
+    Vercel AI SDK documentation and OpenAI/Anthropic API guidelines for best practices in AI integration.

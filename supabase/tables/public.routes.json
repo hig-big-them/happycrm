@@ -1,0 +1,88 @@
+{
+  "table_schema": "public",
+  "table_name": "routes",
+  "columns": [
+    {
+      "column_name": "requires_airport",
+      "data_type": "boolean",
+      "is_nullable": "NO",
+      "column_default": "false",
+      "constraints": null
+    },
+    {
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()",
+      "constraints": [
+        "routes_pkey",
+        "transfers_related_route_id_fkey"
+      ]
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "constraints": null
+    },
+    {
+      "column_name": "name",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": [
+        "routes_name_key"
+      ]
+    }
+  ],
+  "foreign_keys": [],
+  "rls_policies": [
+    {
+      "policy_name": "Anonymous users can view all routes",
+      "command": "r",
+      "roles": [
+        "16478"
+      ],
+      "using_clause": "{CONST :consttype 16 :consttypmod -1 :constcollid 0 :constlen 1 :constbyval true :constisnull false :location 2288 :constvalue 1 [ 1 0 0 0 0 0 0 0 ]}",
+      "with_check_clause": null
+    },
+    {
+      "policy_name": "Anonymous users can insert new routes",
+      "command": "a",
+      "roles": [
+        "16478"
+      ],
+      "using_clause": null,
+      "with_check_clause": "{CONST :consttype 16 :consttypmod -1 :constcollid 0 :constlen 1 :constbyval true :constisnull false :location 2409 :constvalue 1 [ 1 0 0 0 0 0 0 0 ]}"
+    },
+    {
+      "policy_name": "Anonymous users can update routes",
+      "command": "w",
+      "roles": [
+        "16478"
+      ],
+      "using_clause": "{CONST :consttype 16 :consttypmod -1 :constcollid 0 :constlen 1 :constbyval true :constisnull false :location 2521 :constvalue 1 [ 1 0 0 0 0 0 0 0 ]}",
+      "with_check_clause": "{CONST :consttype 16 :consttypmod -1 :constcollid 0 :constlen 1 :constbyval true :constisnull false :location 2542 :constvalue 1 [ 1 0 0 0 0 0 0 0 ]}"
+    },
+    {
+      "policy_name": "Anonymous users can delete routes",
+      "command": "d",
+      "roles": [
+        "16478"
+      ],
+      "using_clause": "{CONST :consttype 16 :consttypmod -1 :constcollid 0 :constlen 1 :constbyval true :constisnull false :location 2654 :constvalue 1 [ 1 0 0 0 0 0 0 0 ]}",
+      "with_check_clause": null
+    },
+    {
+      "policy_name": "Allow insert/update/delete for superusers",
+      "command": "*",
+      "roles": [
+        "0"
+      ],
+      "using_clause": "{OPEXPR :opno 98 :opfuncid 67 :opresulttype 16 :opretset false :opcollid 0 :inputcollid 100 :args ({OPEXPR :opno 3477 :opfuncid 3214 :opresulttype 25 :opretset false :opcollid 100 :inputcollid 100 :args ({OPEXPR :opno 3211 :opfuncid 3478 :opresulttype 3802 :opretset false :opcollid 0 :inputcollid 100 :args ({FUNCEXPR :funcid 17591 :funcresulttype 3802 :funcretset false :funcvariadic false :funcformat 0 :funccollid 0 :inputcollid 0 :args <> :location 3530} {CONST :consttype 25 :consttypmod -1 :constcollid 100 :constlen -1 :constbyval false :constisnull false :location 3544 :constvalue 16 [ 64 0 0 0 97 112 112 95 109 101 116 97 100 97 116 97 ]}) :location 3541} {CONST :consttype 25 :consttypmod -1 :constcollid 100 :constlen -1 :constbyval false :constisnull false :location 3563 :constvalue 8 [ 32 0 0 0 114 111 108 101 ]}) :location 3559} {CONST :consttype 25 :consttypmod -1 :constcollid 100 :constlen -1 :constbyval false :constisnull false :location 3573 :constvalue 13 [ 52 0 0 0 115 117 112 101 114 117 115 101 114 ]}) :location 3571}",
+      "with_check_clause": "{OPEXPR :opno 98 :opfuncid 67 :opresulttype 16 :opretset false :opcollid 0 :inputcollid 100 :args ({OPEXPR :opno 3477 :opfuncid 3214 :opresulttype 25 :opretset false :opcollid 100 :inputcollid 100 :args ({OPEXPR :opno 3211 :opfuncid 3478 :opresulttype 3802 :opretset false :opcollid 0 :inputcollid 100 :args ({FUNCEXPR :funcid 17591 :funcresulttype 3802 :funcretset false :funcvariadic false :funcformat 0 :funccollid 0 :inputcollid 0 :args <> :location 3602} {CONST :consttype 25 :consttypmod -1 :constcollid 100 :constlen -1 :constbyval false :constisnull false :location 3616 :constvalue 16 [ 64 0 0 0 97 112 112 95 109 101 116 97 100 97 116 97 ]}) :location 3613} {CONST :consttype 25 :consttypmod -1 :constcollid 100 :constlen -1 :constbyval false :constisnull false :location 3635 :constvalue 8 [ 32 0 0 0 114 111 108 101 ]}) :location 3631} {CONST :consttype 25 :consttypmod -1 :constcollid 100 :constlen -1 :constbyval false :constisnull false :location 3645 :constvalue 13 [ 52 0 0 0 115 117 112 101 114 117 115 101 114 ]}) :location 3643}"
+    }
+  ],
+  "auth_references": []
+}

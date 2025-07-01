@@ -1,0 +1,16 @@
+{
+  "table_schema": "auth",
+  "table_name": "schema_migrations",
+  "columns": [
+    {
+      "column_name": "version",
+      "data_type": "character varying",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    }
+  ],
+  "foreign_keys": [],
+  "rls_policies": [],
+  "auth_references": []
+}

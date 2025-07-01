@@ -1,0 +1,58 @@
+{
+  "table_schema": "realtime",
+  "table_name": "subscription",
+  "columns": [
+    {
+      "column_name": "entity",
+      "data_type": "regclass",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "claims",
+      "data_type": "jsonb",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "claims_role",
+      "data_type": "regrole",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": "timezone('utc'::text, now())",
+      "constraints": null
+    },
+    {
+      "column_name": "filters",
+      "data_type": "ARRAY",
+      "is_nullable": "NO",
+      "column_default": "'{}'::realtime.user_defined_filter[]",
+      "constraints": null
+    },
+    {
+      "column_name": "id",
+      "data_type": "bigint",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "subscription_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    }
+  ],
+  "foreign_keys": [],
+  "rls_policies": [],
+  "auth_references": []
+}

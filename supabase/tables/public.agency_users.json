@@ -1,0 +1,67 @@
+{
+  "table_schema": "public",
+  "table_name": "agency_users",
+  "columns": [
+    {
+      "column_name": "created_at",
+      "data_type": "timestamp with time zone",
+      "is_nullable": "NO",
+      "column_default": "timezone('utc'::text, now())",
+      "constraints": null
+    },
+    {
+      "column_name": "agency_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": [
+        "agency_users_pkey"
+      ]
+    },
+    {
+      "column_name": "user_id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": [
+        "agency_users_pkey"
+      ]
+    },
+    {
+      "column_name": "role",
+      "data_type": "USER-DEFINED",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    }
+  ],
+  "foreign_keys": [
+    {
+      "constraint_name": "agency_users_agency_id_fkey",
+      "column_name": "agency_id",
+      "referenced_table": "agencies",
+      "referenced_column": "id"
+    }
+  ],
+  "rls_policies": [
+    {
+      "policy_name": "Allow users to view their own agency memberships",
+      "command": "r",
+      "roles": [
+        "0"
+      ],
+      "using_clause": "{OPEXPR :opno 2972 :opfuncid 2956 :opresulttype 16 :opretset false :opcollid 0 :inputcollid 0 :args ({FUNCEXPR :funcid 17593 :funcresulttype 2950 :funcretset false :funcvariadic false :funcformat 0 :funccollid 0 :inputcollid 0 :args <> :location 2899} {VAR :varno 1 :varattno 2 :vartype 2950 :vartypmod -1 :varcollid 0 :varlevelsup 0 :varnosyn 1 :varattnosyn 2 :location 2912}) :location 2910}",
+      "with_check_clause": null
+    },
+    {
+      "policy_name": "Allow superuser full access on agency_users",
+      "command": "*",
+      "roles": [
+        "0"
+      ],
+      "using_clause": "{OPEXPR :opno 98 :opfuncid 67 :opresulttype 16 :opretset false :opcollid 0 :inputcollid 100 :args ({OPEXPR :opno 3477 :opfuncid 3214 :opresulttype 25 :opretset false :opcollid 100 :inputcollid 100 :args ({COERCEVIAIO :arg {OPEXPR :opno 3477 :opfuncid 3214 :opresulttype 25 :opretset false :opcollid 100 :inputcollid 100 :args ({FUNCEXPR :funcid 17591 :funcresulttype 3802 :funcretset false :funcvariadic false :funcformat 0 :funccollid 0 :inputcollid 0 :args <> :location 186} {CONST :consttype 25 :consttypmod -1 :constcollid 100 :constlen -1 :constbyval false :constisnull false :location 199 :constvalue 21 [ 84 0 0 0 114 97 119 95 97 112 112 95 109 101 116 97 95 100 97 116 97 ]}) :location 196} :resulttype 3802 :resultcollid 0 :coerceformat 1 :location 219} {CONST :consttype 25 :consttypmod -1 :constcollid 100 :constlen -1 :constbyval false :constisnull false :location 229 :constvalue 12 [ 48 0 0 0 97 112 112 95 114 111 108 101 ]}) :location 226} {CONST :consttype 25 :consttypmod -1 :constcollid 100 :constlen -1 :constbyval false :constisnull false :location 243 :constvalue 13 [ 52 0 0 0 115 117 112 101 114 117 115 101 114 ]}) :location 241}",
+      "with_check_clause": "{OPEXPR :opno 98 :opfuncid 67 :opresulttype 16 :opretset false :opcollid 0 :inputcollid 100 :args ({OPEXPR :opno 3477 :opfuncid 3214 :opresulttype 25 :opretset false :opcollid 100 :inputcollid 100 :args ({COERCEVIAIO :arg {OPEXPR :opno 3477 :opfuncid 3214 :opresulttype 25 :opretset false :opcollid 100 :inputcollid 100 :args ({FUNCEXPR :funcid 17591 :funcresulttype 3802 :funcretset false :funcvariadic false :funcformat 0 :funccollid 0 :inputcollid 0 :args <> :location 271} {CONST :consttype 25 :consttypmod -1 :constcollid 100 :constlen -1 :constbyval false :constisnull false :location 284 :constvalue 21 [ 84 0 0 0 114 97 119 95 97 112 112 95 109 101 116 97 95 100 97 116 97 ]}) :location 281} :resulttype 3802 :resultcollid 0 :coerceformat 1 :location 304} {CONST :consttype 25 :consttypmod -1 :constcollid 100 :constlen -1 :constbyval false :constisnull false :location 314 :constvalue 12 [ 48 0 0 0 97 112 112 95 114 111 108 101 ]}) :location 311} {CONST :consttype 25 :consttypmod -1 :constcollid 100 :constlen -1 :constbyval false :constisnull false :location 328 :constvalue 13 [ 52 0 0 0 115 117 112 101 114 117 115 101 114 ]}) :location 326}"
+    }
+  ],
+  "auth_references": []
+}

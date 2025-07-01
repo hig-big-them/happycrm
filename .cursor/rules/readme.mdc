@@ -1,0 +1,216 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+## Happy Transfer Tracking – Agency Management README
+
+This document outlines the structure, technologies, and development practices of the **Happy Transfer Tracking** project, with an emphasis on agency and user management. It includes schema design, RLS policy considerations, and debugging tools for future developers.
+
+---
+
+### 🧩 Project Overview
+
+This system tracks transfer operations with role-based access. Superusers manage all agencies and users. Agency users are restricted based on assigned roles.
+
+---
+
+### ⚙️ Technologies
+
+* **Framework**: Next.js 14 (App Router)
+* **Language**: TypeScript
+* **UI**: React, Tailwind CSS, Shadcn UI, Radix UI
+* **Database**: Supabase (PostgreSQL, Authentication, RLS)
+* **Server Actions**: `next-safe-action`
+* **GraphQL (optional)**: Supabase GraphQL endpoint via Genql
+
+---
+
+### 📁 Project Structure
+
+* `app/` – Pages and layouts
+
+  * `admin/agencies/`
+
+    * `page.tsx` – Lists agencies (Server Component)
+    * `new/page.tsx` – Agency creation form (Client Component)
+    * `[agencyId]/manage/`
+
+      * `page.tsx` – Agency detail view (Server Component)
+      * `_components/` – Client-side UI for managing agency users
+* `components/ui/` – Shadcn UI components
+* `lib/`
+
+  * `actions/agency-actions.ts` – Server actions for agency/user CRUD
+  * `supabase/` – Supabase client setup
+  * `utils.ts` – Utility functions (e.g., `cn`)
+* `supabase/migrations/` – SQL migration files
+* `types/supabase.ts` – Centralized Supabase types
+* `public/` – Static assets
+
+> Legacy `src/` directory and workspace root-level `package.json` have been removed.
+
+---
+
+### 🛂 User Roles & Access Control
+
+* `superuser`: full system access
+* `agency`: limited to agency-specific operations
+* Role-based access enforced via:
+
+  * `app_metadata.role` in Supabase Auth
+  * Server actions and client navigation logic (e.g., `navbar.tsx`)
+
+---
+
+### 🗄️ Database Schema
+
+* **agencies**
+
+  * `id`, `name`, `created_at`, `updated_at`, `contact_person_name?`, `phone_numbers?`, `is_active?`
+* **agency\_users** (Join Table)
+
+  * `agency_id`, `user_id`, `role` (ENUM), `assigned_at`
+* **RLS Policies** – Use `app_metadata.role` and helper functions for fine-grained control
+* JSON snapshots of live schema are stored in `supabase/output/` (e.g., `public.agencies.json`)
+
+---
+
+### 🧱 Core Modules
+
+#### Agency Management
+
+* `getAgencies` – fetch list
+* `createAgency` – add new agency
+* `getAgencyDetails`, `assignUserToAgency`, `removeUserFromAgency` – user assignment management
+
+#### Server Actions
+
+* Implemented via `next-safe-action`
+* Validated with Zod schemas
+* Defined in `lib/actions/agency-actions.ts`
+* All type imports rely on `types/supabase.ts`
+
+#### UI Development
+
+* Built with Shadcn UI + Tailwind CSS
+* Uses utility-first CSS and `cn()` helper
+* `tailwind.config.ts` updated to reflect new directory structure
+
+---
+
+### 🚀 Setup Instructions
+
+1. **Clone Repo**
+2. **Install Dependencies**: `npm install` or `yarn install`
+3. **Supabase Config**:
+
+   * Create a project at [supabase.com](https://supabase.com)
+   * Run:
+
+     ```bash
+     supabase db push
+     ```
+   * Add to `.env.local`:
+
+     ```env
+     NEXT_PUBLIC_SUPABASE_URL=your_url
+     NEXT_PUBLIC_SUPABASE_ANON_KEY=your_key
+     ```
+4. **Run Dev Server**: `npm run dev` or `yarn dev`
+
+---
+
+### 🐞 Transfer Module Debugging
+
+#### 1. Expanding ENUMs Safely
+
+```sql
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'agency_role') THEN
+    CREATE TYPE agency_role AS ENUM (...);
+  ELSE
+    BEGIN
+      ALTER TYPE agency_role ADD VALUE IF NOT EXISTS 'superuser';
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+  END IF;
+END $$;
+```
+
+#### 2. Field Mapping for Legacy Forms
+
+```sql
+CREATE OR REPLACE FUNCTION map_transfer_fields() RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.agency_id IS NOT NULL AND NEW.assigned_agency_id IS NULL THEN
+    NEW.assigned_agency_id := NEW.agency_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+#### 3. Audit Log Fixes
+
+* Avoid NULL `modified_by`:
+
+```sql
+current_user_id := COALESCE(auth.uid(), '00000000-0000-0000-0000-000000000000');
+```
+
+* Add `SECURITY DEFINER` and policy:
+
+```sql
+CREATE POLICY "Allow trigger to insert audit logs"
+  ON transfer_audit_log FOR INSERT TO public WITH CHECK (true);
+```
+
+#### 4. JWT & RLS Compatibility
+
+```sql
+CREATE FUNCTION is_user_superuser() RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN auth.jwt() ->> 'role' = 'superuser'
+      OR (auth.jwt() ->> 'raw_app_meta_data')::jsonb ->> 'app_role' = 'superuser';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+#### 5. Simplified RLS Policies
+
+```sql
+DROP POLICY IF
+CREATE POLICY "Superusers full access"
+  ON transfers USING (is_user_superuser()) WITH CHECK (is_user_superuser());
+```
+
+#### 6. RLS Debug Tooling
+
+```sql
+CREATE TABLE IF NOT EXISTS rls_debug_logs (...);
+
+CREATE FUNCTION debug_rls_check(action TEXT, details JSONB DEFAULT NULL)
+RETURNS JSONB AS $$
+-- implementation
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+---
+
+### 📎 Notes
+
+* Use `types/supabase.ts` for shared types
+* Supabase types are regenerated using:
+
+```bash
+supabase gen types typescript --project-id <PROJECT_ID> --schema public > types/supabase.ts
+```
+
+* Supabase table schemas are exported as JSON to `supabase/tables/`
+* Refer to `v3.md` for changelogs and implementation history
+
+---
+
+Happy coding! 🎉

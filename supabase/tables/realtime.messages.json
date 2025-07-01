@@ -1,0 +1,69 @@
+{
+  "table_schema": "realtime",
+  "table_name": "messages",
+  "columns": [
+    {
+      "column_name": "topic",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "inserted_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "constraints": [
+        "messages_pkey"
+      ]
+    },
+    {
+      "column_name": "updated_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "NO",
+      "column_default": "now()",
+      "constraints": null
+    },
+    {
+      "column_name": "private",
+      "data_type": "boolean",
+      "is_nullable": "YES",
+      "column_default": "false",
+      "constraints": null
+    },
+    {
+      "column_name": "event",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "payload",
+      "data_type": "jsonb",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "extension",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "NO",
+      "column_default": "gen_random_uuid()",
+      "constraints": [
+        "messages_pkey"
+      ]
+    }
+  ],
+  "foreign_keys": [],
+  "rls_policies": [],
+  "auth_references": []
+}

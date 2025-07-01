@@ -1,0 +1,23 @@
+{
+  "table_schema": "realtime",
+  "table_name": "schema_migrations",
+  "columns": [
+    {
+      "column_name": "version",
+      "data_type": "bigint",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "inserted_at",
+      "data_type": "timestamp without time zone",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    }
+  ],
+  "foreign_keys": [],
+  "rls_policies": [],
+  "auth_references": []
+}

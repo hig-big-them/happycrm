@@ -1,0 +1,23 @@
+{
+  "table_schema": "public",
+  "table_name": "assignable_users_view",
+  "columns": [
+    {
+      "column_name": "email",
+      "data_type": "character varying",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "id",
+      "data_type": "uuid",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    }
+  ],
+  "foreign_keys": [],
+  "rls_policies": [],
+  "auth_references": []
+}

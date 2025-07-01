@@ -1,0 +1,32 @@
+{
+  "table_schema": "supabase_migrations",
+  "table_name": "schema_migrations",
+  "columns": [
+    {
+      "column_name": "name",
+      "data_type": "text",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "statements",
+      "data_type": "ARRAY",
+      "is_nullable": "YES",
+      "column_default": null,
+      "constraints": null
+    },
+    {
+      "column_name": "version",
+      "data_type": "text",
+      "is_nullable": "NO",
+      "column_default": null,
+      "constraints": [
+        "schema_migrations_pkey"
+      ]
+    }
+  ],
+  "foreign_keys": [],
+  "rls_policies": [],
+  "auth_references": []
+}

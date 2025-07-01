@@ -1,0 +1,97 @@
+{
+  "name": "user_notification_preferences",
+  "schema": "public",
+  "comment": "Kullanıcıların bildirim tercihlerini saklar",
+  "columns": [
+    {
+      "name": "id",
+      "type": "uuid",
+      "comment": "UUID birincil anahtar",
+      "not_null": true,
+      "default": "gen_random_uuid()",
+      "is_primary_key": true
+    },
+    {
+      "name": "user_id",
+      "type": "uuid",
+      "comment": "Kullanıcı ID referansı",
+      "not_null": true,
+      "foreign_key": {
+        "schema": "auth",
+        "table": "users",
+        "column": "id"
+      }
+    },
+    {
+      "name": "notification_type",
+      "type": "text",
+      "comment": "Bildirim tipi (transfer_deadline, status_change, vb.)",
+      "not_null": true
+    },
+    {
+      "name": "phone_numbers",
+      "type": "jsonb",
+      "comment": "Bildirim için kullanılacak telefon numaraları dizisi",
+      "default": "'[]'::jsonb"
+    },
+    {
+      "name": "is_enabled",
+      "type": "boolean",
+      "comment": "Bildirim tercihi aktif mi?",
+      "default": "true"
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "comment": "Kayıt oluşturulma zamanı",
+      "not_null": true,
+      "default": "now()"
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "comment": "Son güncelleme zamanı",
+      "not_null": true,
+      "default": "now()"
+    }
+  ],
+  "indexes": [
+    {
+      "name": "user_notification_preferences_user_id_notification_type_idx",
+      "unique": true,
+      "columns": ["user_id", "notification_type"]
+    }
+  ],
+  "policies": [
+    {
+      "name": "Kullanıcılar kendi bildirim tercihlerini görebilir",
+      "definition": "auth.uid() = user_id",
+      "check": null,
+      "operation": "SELECT"
+    },
+    {
+      "name": "Kullanıcılar kendi bildirim tercihlerini düzenleyebilir",
+      "definition": "auth.uid() = user_id",
+      "check": "auth.uid() = user_id",
+      "operation": "UPDATE"
+    },
+    {
+      "name": "Kullanıcılar kendi bildirim tercihlerini ekleyebilir",
+      "definition": null,
+      "check": "auth.uid() = user_id",
+      "operation": "INSERT"
+    },
+    {
+      "name": "Kullanıcılar kendi bildirim tercihlerini silebilir",
+      "definition": "auth.uid() = user_id",
+      "check": null,
+      "operation": "DELETE"
+    },
+    {
+      "name": "Superuser tüm bildirim tercihlerini görüntüleyebilir ve yönetebilir",
+      "definition": "((auth.jwt()->>'raw_app_meta_data')::jsonb->>'role') = 'superuser'",
+      "check": "((auth.jwt()->>'raw_app_meta_data')::jsonb->>'role') = 'superuser'",
+      "operation": "ALL"
+    }
+  ]
+}
