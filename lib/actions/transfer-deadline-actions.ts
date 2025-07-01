@@ -1,29 +1,16 @@
 "use server";
 
-import { SupabaseClient, createClient } from "@supabase/supabase-js";
+import { SupabaseClient } from "@supabase/supabase-js";
 import { makeCall, makeSequentialCalls } from "../services/twilio-service";
 import { sendDeadlineApproachingEmail, sendDeadlineMissedEmail } from "../services/notification-preferences-service";
 import { addWebhookLog } from "../services/webhook-logger";
 import type { Database } from "../../types/supabase";
-import { createServerActionClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { createServiceRoleClient } from "@/lib/utils/supabase/service";
 
 // RLS politikaları sebebiyle service_role kullanmak gerekebilir
 const getSupabaseServiceClient = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  
-  if (!supabaseUrl || !supabaseServiceKey) {
-    throw new Error("Supabase yapılandırması eksik. Çevre değişkenleri kontrol edilmeli.");
-  }
-  
   // @ts-ignore - Supabase istemci tipi sorununu görmezden geliyoruz
-  return createServerActionClient<Database>({ 
-    cookies
-  }, {
-    supabaseUrl,
-    supabaseKey: supabaseServiceKey
-  });
+  return createServiceRoleClient();
 };
 
 export interface DeadlineTransfer {

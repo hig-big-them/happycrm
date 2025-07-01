@@ -1,5 +1,5 @@
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import type { Database } from "../../types/supabase";
+import { createClient } from '@/lib/utils/supabase/client'
+import type { Database } from '../../types/supabase'
 
 // Bildirim kanalları
 export enum NotificationChannel {
@@ -45,7 +45,7 @@ export interface ClientNotificationPreference {
 class ClientNotificationService {
   // Tüm bildirim tercihlerini getir
   async getUserPreferences(): Promise<ClientNotificationPreference[]> {
-    const supabase = createClientComponentClient<Database>();
+    const supabase = createClient<Database>()
     
     const { data, error } = await supabase
       .from('user_notification_preferences')
@@ -66,7 +66,7 @@ class ClientNotificationService {
   
   // Belirli bir bildirim tipine ait tercihi getir
   async getPreferenceByType(notificationType: string): Promise<ClientNotificationPreference | null> {
-    const supabase = createClientComponentClient<Database>();
+    const supabase = createClient<Database>()
     
     const { data, error } = await supabase
       .from('user_notification_preferences')
@@ -91,7 +91,7 @@ class ClientNotificationService {
   
   // Bildirim tercihini kaydet
   async savePreference(preference: ClientNotificationPreference): Promise<ClientNotificationPreference> {
-    const supabase = createClientComponentClient<Database>();
+    const supabase = createClient<Database>()
     
     // Önce mevcut bir tercihin olup olmadığını kontrol et
     const { data: existingPref, error: fetchError } = await supabase

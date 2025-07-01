@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { createServerActionClient } from "@supabase/auth-helpers-nextjs";
+import { createServerActionClient } from "@/lib/utils/supabase/server";
 import type { Database } from "../../types/supabase";
 // import type { User } from "@supabase/supabase-js"; // User type might not be directly needed if we rely on RLS or returned data
 // import { PostgrestError } from "@supabase/supabase-js"; // Specific error type might not be needed for action return
@@ -20,16 +20,6 @@ import {
 
 // Sadece server action fonksiyonları export et, client objelerini local tut
 const actionClient = createSafeActionClient();
-
-// Supabase Client oluşturmak için helper fonksiyon
-const getSupabaseClient = () => {
-  // Next.js 14 ile uyumlu Cookie Store
-  const cookieStore = cookies();
-  
-  return createServerActionClient<Database>({
-    cookies: () => cookieStore as any
-  });
-};
 
 // --- Ajans Oluşturma Aksiyonu ---
 export async function createAgency(formData: FormData | { parsedInput: any }) {
@@ -51,7 +41,7 @@ export async function createAgency(formData: FormData | { parsedInput: any }) {
     return { serverError: "Geçersiz ajans bilgileri."};
   }
   
-  const supabase = getSupabaseClient();
+  const supabase = createServerActionClient();
   const { data: { user }, error: userError } = await supabase.auth.getUser();
 
   if (userError || !user) {
@@ -83,7 +73,7 @@ export async function createAgency(formData: FormData | { parsedInput: any }) {
 export async function getAgencies() {
   "use server";
   
-  const supabase = getSupabaseClient();
+  const supabase = createServerActionClient();
   const { data: agencies, error } = await supabase
     .from("agencies")
     .select(`
@@ -115,7 +105,7 @@ export async function getAgencyDetails(input: { parsedInput: { agencyId: string 
     return { serverError: "Ajans ID gereklidir."};
   }
   
-  const supabase = getSupabaseClient();
+  const supabase = createServerActionClient();
   const { data: agencyDetails, error } = await supabase
     .from("agencies")
     .select(`
@@ -146,7 +136,7 @@ export async function assignUserToAgency(input: { parsedInput: any } | any) {
     return { serverError: "Geçersiz atama bilgileri."};
   }
   
-  const supabase = getSupabaseClient();
+  const supabase = createServerActionClient();
 
   // Get the authenticated user's role to enforce authorization
   const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -198,7 +188,7 @@ export async function removeUserFromAgency(input: { parsedInput: any } | any) {
     userId: parsedInput.userId
   });
   
-  const supabase = getSupabaseClient();
+  const supabase = createServerActionClient();
   
   // Get the authenticated user's role to enforce authorization
   const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -246,7 +236,7 @@ export async function removeUserFromAgency(input: { parsedInput: any } | any) {
 export async function getUsersForAssignment() {
   "use server";
   
-  const supabase = getSupabaseClient();
+  const supabase = createServerActionClient();
   const { data: users, error } = await supabase
     .from("user_profiles") 
     .select("id, username, role");
@@ -268,7 +258,7 @@ export async function updateAgencyUserRole(input: { agencyId: string, userId: st
     return { serverError: "Geçersiz rol güncelleme bilgileri."};
   }
   
-  const supabase = getSupabaseClient();
+  const supabase = createServerActionClient();
 
   // Get the authenticated user's role to enforce authorization
   const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -319,9 +309,7 @@ export async function hardDeleteUserFromAgency(input: { agencyId: string, userId
   
   const { agencyId, userId } = input;
   
-  const supabase = createServerActionClient<Database>({
-    cookies: () => cookies() as any
-  });
+  const supabase = createServerActionClient();
   
   // Servis rolü ile RLS'i tamamen bypass et
   const { error } = await supabase

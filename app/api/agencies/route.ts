@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createServerClient } from '@/lib/utils/supabase/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const supabase = createServerComponentClient({ cookies: () => cookieStore });
+    const supabase = createServerClient();
 
     // Kullanıcı kontrolü
     const { data: { user }, error: userError } = await supabase.auth.getUser();

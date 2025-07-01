@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
+import { createServerClient } from "@/lib/utils/supabase/server";
 import { makeDeadlineCallForTransfer } from "../../../../../lib/actions/transfer-deadline-actions";
 import { Database } from "../../../../../types/supabase";
 
 export async function POST(request: NextRequest) {
   try {
     // Supabase client oluştur
-    const supabase = createRouteHandlerClient<Database>({ cookies });
+    const supabase = createServerClient();
     
     // Oturum kontrolü
     const { data: { session } } = await supabase.auth.getSession();

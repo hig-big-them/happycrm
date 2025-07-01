@@ -1,32 +1,13 @@
 "use server";
 
-import { createServerActionClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
-
-// Yeni importlar
 import { createSafeActionClient } from "next-safe-action";
 import { z } from "zod";
+
 import { getUser } from "../../lib/actions/clients";
 import { CreateAgencyUserSchema } from "../../lib/actions/schemas";
-
-const getSupabaseAdminClient = async () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!supabaseUrl || !supabaseServiceRoleKey) {
-    console.error("Supabase URL veya Service Role Key ortam değişkenlerinde tanımlanmamış.");
-    throw new Error("Sunucu yapılandırma hatası.");
-  }
-  
-  const { createClient } = await import('@supabase/supabase-js');
-  return createClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  });
-}
+import { createServerActionClient } from "@/lib/utils/supabase/server";
+import { createServiceRoleClient } from "@/lib/utils/supabase/service";
 
 const actionClient = createSafeActionClient();
 
@@ -46,7 +27,8 @@ const adminActionClient = createSafeActionClient({
       throw new Error("Bu işlemi yapma yetkiniz yok! Sadece admin kullanıcılar yapabilir.");
     }
 
-    return { user, role };
+    const supabaseAdmin = createServiceRoleClient();
+    return { user, role, supabaseAdmin };
   },
 });
 
@@ -77,9 +59,8 @@ const AssignUserToAgencySchema = z.object({
 
 export const createAgencyAndUserAction = adminActionClient
   .schema(CreateAgencyUserSchema)
-  .action(async ({ parsedInput: { email, password, agencyName, username } }) => { 
-    const cookieStore = await cookies();
-    const supabase = createServerActionClient({ cookies: () => cookieStore });
+  .action(async ({ parsedInput: { email, password, agencyName, username }, ctx: { supabaseAdmin } }) => { 
+    const supabase = createServerActionClient();
     const { data: { user: sessionUser }, error: sessionError } = await supabase.auth.getUser();
 
     if (sessionError || !sessionUser) {
@@ -90,8 +71,6 @@ export const createAgencyAndUserAction = adminActionClient
     if (sessionRole !== 'admin') {
       return { failure: "Yetkisiz erişim! Bu işlemi sadece admin yapabilir." };
     }
-
-    const supabaseAdmin = await getSupabaseAdminClient(); 
 
     try {
       // Önce ajansı oluştur
@@ -169,9 +148,7 @@ export const createAgencyAndUserAction = adminActionClient
 // Kullanıcı listesini getir
 export const getUsersListAction = adminActionClient
   .schema(GetUsersSchema)
-  .action(async ({ parsedInput: { page, limit, search } }) => {
-    const supabaseAdmin = await getSupabaseAdminClient();
-    
+  .action(async ({ parsedInput: { page, limit, search }, ctx: { supabaseAdmin } }) => {
     try {
       const offset = (page - 1) * limit;
       
@@ -231,9 +208,7 @@ export const getUsersListAction = adminActionClient
 // Kullanıcı rolünü güncelle
 export const updateUserRoleAction = adminActionClient
   .schema(UpdateUserRoleSchema)
-  .action(async ({ parsedInput: { userId, role } }) => {
-    const supabaseAdmin = await getSupabaseAdminClient();
-
+  .action(async ({ parsedInput: { userId, role }, ctx: { supabaseAdmin } }) => {
     try {
       const { data: userData, error } = await supabaseAdmin.auth.admin.updateUserById(
         userId,
@@ -259,9 +234,7 @@ export const updateUserRoleAction = adminActionClient
 // Kullanıcıyı sil
 export const deleteUserAction = adminActionClient
   .schema(DeleteUserSchema)
-  .action(async ({ parsedInput: { userId } }) => {
-    const supabaseAdmin = await getSupabaseAdminClient();
-
+  .action(async ({ parsedInput: { userId }, ctx: { supabaseAdmin } }) => {
     try {
       // Önce agency_users tablosundan sil
       await supabaseAdmin
@@ -289,9 +262,7 @@ export const deleteUserAction = adminActionClient
 // Kullanıcıyı ajansa ata
 export const assignUserToAgencyAction = adminActionClient
   .schema(AssignUserToAgencySchema)
-  .action(async ({ parsedInput: { userId, agencyId, role } }) => {
-    const supabaseAdmin = await getSupabaseAdminClient();
-
+  .action(async ({ parsedInput: { userId, agencyId, role }, ctx: { supabaseAdmin } }) => {
     try {
       // Önce mevcut atamayı kontrol et
       const { data: existing } = await supabaseAdmin
