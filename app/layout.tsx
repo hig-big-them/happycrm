@@ -8,7 +8,6 @@ import { AuthProvider } from '../components/auth-provider'
 import { QueryProvider } from '../lib/providers/query-provider'
 import { NotificationPopup } from '../components/messaging/notification-popup'
 import { PWAInstallBanner } from '../components/pwa-install-banner'
-import { PWAStatus } from '../components/pwa-status'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -87,7 +86,6 @@ export default function RootLayout({
               <Toaster />
               <NotificationPopup />
               <PWAInstallBanner />
-              <PWAStatus />
             </AuthProvider>
           </QueryProvider>
         </ThemeProvider>
