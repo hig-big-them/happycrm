@@ -3,13 +3,13 @@ import twilio from 'twilio';
 import { createClient } from '../../../../lib/supabase/client';
 import { makeSequentialCalls } from '../../../../lib/services/twilio-service';
 
-// Twilio istemcisi
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
-
 export async function POST(request: NextRequest) {
+  // Twilio istemcisini istek geldiğinde oluştur
+  const twilioClient = twilio(
+    process.env.TWILIO_ACCOUNT_SID,
+    process.env.TWILIO_AUTH_TOKEN
+  );
+
   try {
     const body = await request.json();
     
