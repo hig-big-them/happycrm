@@ -1023,7 +1023,7 @@ export default function PipelinesPage() {
   
   // Mobile states
   const isMobile = useMobile();
-  const [mobileActiveStage, setMobileActiveStage] = React.useState<string | null>(null);
+  const [mobileActiveStage, setMobileActiveStage] = React.useState<string>("");
   const [quickEditLead, setQuickEditLead] = React.useState<Lead | null>(null);
   const [isQuickEditOpen, setIsQuickEditOpen] = React.useState(false);
 
@@ -1153,6 +1153,8 @@ export default function PipelinesPage() {
   React.useEffect(() => {
     if (activePipeline) {
       loadStagesAndLeads(activePipeline);
+    } else {
+      setIsLoading(false);
     }
   }, [activePipeline]);
 

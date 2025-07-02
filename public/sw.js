@@ -90,20 +90,24 @@ self.addEventListener('fetch', (event) => {
     caches.match(request)
       .then(cachedResponse => {
         const fetchPromise = fetch(request).then(networkResponse => {
-          // Geçerli yanıtı dinamik cache'e at
-          if (networkResponse && networkResponse.status === 200) {
-            const responseToCache = networkResponse.clone();
+          // Sadece geçerli ve GET isteklerini dinamik cache'e at
+          if (request.method === 'GET' && networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone()
             caches.open(DYNAMIC_CACHE_NAME)
-              .then(cache => cache.put(request, responseToCache));
+              .then(cache => cache.put(request, responseToCache))
+              .catch(err => console.error('SW: Dinamik cache yazma hatası:', err));
           }
-          return networkResponse;
+          return networkResponse
         }).catch(() => {
-          // Ağ hatası olursa ve cache'de yoksa hata döndür
-          return new Response(JSON.stringify({ error: 'Network error' }), {
-            headers: { 'Content-Type': 'application/json' },
-            status: 500
-          });
-        });
+          // Ağ hatası ve cache'de yoksa, API istekleri için hata döndür
+          if (request.destination !== 'document') {
+            return new Response(JSON.stringify({ error: 'Network error' }), {
+              headers: { 'Content-Type': 'application/json' },
+              status: 503
+            })
+          }
+          // Diğer hatalar için boş bırak, tarayıcı halletsin
+        })
 
         // Cache'de yanıt varsa onu hemen döndür, arka planda ağı kontrol et
         return cachedResponse || fetchPromise;
