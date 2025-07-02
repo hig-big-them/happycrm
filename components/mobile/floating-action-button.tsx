@@ -1,77 +1,79 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Plus, Target, X, Users, ChevronUp } from 'lucide-react'
+import { Plus, Target, X, Users, ChevronUp, MessageCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { triggerHaptic } from '@/hooks/use-swipe'
 
 interface FloatingActionButtonProps {
   onNewLead?: () => void
-  onNewStage?: () => void
-  onNewPipeline?: () => void
+  onMessages?: () => void
   className?: string
 }
 
 export function FloatingActionButton({
   onNewLead,
-  onNewStage,
-  onNewPipeline,
+  onMessages,
   className
 }: FloatingActionButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
+  const menuRef = useRef<HTMLDivElement>(null)
 
-  // Navigation sonrasında menüyü kapat - multiple checks
+  // Navigation sonrasında menüyü kapat
   useEffect(() => {
     setIsOpen(false)
   }, [pathname])
 
-  // Route değişikliklerini dinle ve kapat
-  useEffect(() => {
-    const handleRouteChange = () => {
-      setIsOpen(false)
-    }
-    
-    // Manual route change listening
-    window.addEventListener('popstate', handleRouteChange)
-    
-    return () => {
-      window.removeEventListener('popstate', handleRouteChange)
-    }
-  }, [])
-
-  // Click outside to close
+  // Click outside to close - improved version
   useEffect(() => {
     if (isOpen) {
       const handleClickOutside = (event: MouseEvent) => {
-        const target = event.target as Element
-        if (!target.closest('[data-fab-menu]')) {
+        if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
           setIsOpen(false)
         }
       }
       
-      document.addEventListener('click', handleClickOutside)
-      return () => document.removeEventListener('click', handleClickOutside)
+      // Delay to prevent immediate close on open
+      const timer = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside)
+        document.addEventListener('touchstart', handleClickOutside as any)
+      }, 100)
+      
+      return () => {
+        clearTimeout(timer)
+        document.removeEventListener('mousedown', handleClickOutside)
+        document.removeEventListener('touchstart', handleClickOutside as any)
+      }
     }
   }, [isOpen])
 
   const toggleMenu = () => {
-    setIsOpen(!isOpen)
+    setIsOpen(prev => !prev)
     triggerHaptic('light')
   }
 
   const handleAction = (action: () => void) => {
     triggerHaptic('medium')
-    setIsOpen(false) // Hemen kapat
-    // Action'ı çalıştır
-    try {
-      action()
-    } catch (error) {
-      console.error('FAB action error:', error)
-    }
+    
+    // Immediately close menu
+    setIsOpen(false)
+    
+    // Execute action after a small delay to ensure menu closes first
+    setTimeout(() => {
+      try {
+        action()
+      } catch (error) {
+        console.error('FAB action error:', error)
+      }
+    }, 150)
+  }
+
+  const handleMessagesClick = () => {
+    router.push('/messaging')
   }
 
   const actions = [
@@ -82,16 +84,10 @@ export function FloatingActionButton({
       color: 'bg-blue-500 hover:bg-blue-600',
     },
     {
-      label: 'Yeni Stage',
-      icon: Target,
-      onClick: onNewStage,
+      label: 'Mesajlar',
+      icon: MessageCircle,
+      onClick: onMessages || handleMessagesClick,
       color: 'bg-green-500 hover:bg-green-600',
-    },
-    {
-      label: 'Yeni Pipeline',
-      icon: ChevronUp,
-      onClick: onNewPipeline,
-      color: 'bg-purple-500 hover:bg-purple-600',
     },
   ].filter(action => action.onClick)
 
@@ -99,7 +95,8 @@ export function FloatingActionButton({
 
   return (
     <div 
-      className={cn("fixed bottom-4 right-4 z-50 md:hidden", className)}
+      ref={menuRef}
+      className={cn("fixed bottom-4 right-6 z-50 md:hidden", className)}
       data-fab-menu
     >
       {/* Action buttons */}
@@ -116,7 +113,7 @@ export function FloatingActionButton({
               "flex items-center gap-2 transition-all",
               isOpen
                 ? "translate-y-0 opacity-100"
-                : `translate-y-${(index + 1) * 4} opacity-0`
+                : "translate-y-4 opacity-0"
             )}
             style={{ transitionDelay: isOpen ? `${index * 50}ms` : '0ms' }}
           >
@@ -124,7 +121,10 @@ export function FloatingActionButton({
               {action.label}
             </span>
             <Button
-              onClick={() => handleAction(action.onClick!)}
+              onClick={(e) => {
+                e.stopPropagation()
+                handleAction(action.onClick!)
+              }}
               size="icon"
               className={cn(
                 "rounded-full w-12 h-12 shadow-lg",
@@ -140,7 +140,10 @@ export function FloatingActionButton({
 
       {/* Main FAB button */}
       <Button
-        onClick={toggleMenu}
+        onClick={(e) => {
+          e.stopPropagation()
+          toggleMenu()
+        }}
         className={cn(
           "rounded-full w-14 h-14 shadow-lg",
           isOpen ? "bg-red-500 hover:bg-red-600" : "bg-primary hover:bg-primary/90",
@@ -175,7 +178,7 @@ export function MiniFAB({ onClick, icon: Icon, label, className }: MiniFABProps)
         triggerHaptic('light')
       }}
       className={cn(
-        "fixed bottom-4 right-4 z-50 md:hidden",
+        "fixed bottom-4 right-6 z-50 md:hidden",
         "rounded-full shadow-lg",
         "flex items-center gap-2",
         label ? "pl-4 pr-5 h-12" : "w-14 h-14",

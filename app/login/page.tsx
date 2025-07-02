@@ -26,12 +26,39 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [showDebug, setShowDebug] = useState(false)
+  const [isSafariBrowser, setIsSafariBrowser] = useState(false)
   const router = useRouter()
+
+  // Safari detection
+  useEffect(() => {
+    const ua = window.navigator.userAgent
+    const safari = /^((?!chrome|android).)*safari/i.test(ua)
+    const ios = /iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream
+    setIsSafariBrowser(safari || ios)
+  }, [])
 
   // Sayfa yüklendiğinde oturum durumunu kontrol et
   useEffect(() => {
     async function checkSession() {
       try {
+        // Safari için özel session kontrolü
+        if (isSafariBrowser) {
+          // Clear any stale auth data
+          const authKeys = ['supabase.auth.token', 'sb-auth-token']
+          authKeys.forEach(key => {
+            try {
+              const hasStaleData = localStorage.getItem(key)
+              if (hasStaleData) {
+                const data = JSON.parse(hasStaleData)
+                if (data.expires_at && new Date(data.expires_at * 1000) < new Date()) {
+                  localStorage.removeItem(key)
+                  sessionStorage.removeItem(key)
+                }
+              }
+            } catch {}
+          })
+        }
+        
         const { data: { session }, error } = await supabase.auth.getSession()
         
         // Eğer aktif bir oturum varsa dashboard'a yönlendir
@@ -46,7 +73,7 @@ export default function LoginPage() {
     }
     
     checkSession()
-  }, [router, supabase])
+  }, [router, supabase, isSafariBrowser])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -54,9 +81,31 @@ export default function LoginPage() {
     setError(null)
 
     try {
+      // Safari için özel temizlik
+      if (isSafariBrowser) {
+        try {
+          // Clear all auth-related storage
+          const authKeys = Object.keys(localStorage).filter(key => 
+            key.includes('supabase') || key.includes('auth')
+          )
+          authKeys.forEach(key => {
+            localStorage.removeItem(key)
+            sessionStorage.removeItem(key)
+          })
+        } catch (err) {
+          console.warn('Safari storage clear warning:', err)
+        }
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password
+        password,
+        options: {
+          // Safari için ekstra güvenlik
+          ...(isSafariBrowser && {
+            captchaToken: undefined, // Safari'de captcha sorunları olabiliyor
+          })
+        }
       })
 
       if (error) {
@@ -69,8 +118,13 @@ export default function LoginPage() {
 
       // Oturum başarıyla oluşturulduysa yönlendir
       if (data.session) {
-        // Cache temizlemek için timestamp ekle
-        window.location.href = `/dashboard?t=${Date.now()}`
+        // Safari için özel yönlendirme
+        if (isSafariBrowser) {
+          // Force reload to ensure session is properly set
+          window.location.replace(`/dashboard?t=${Date.now()}`)
+        } else {
+          window.location.href = `/dashboard?t=${Date.now()}`
+        }
       }
     } catch (error: any) {
       console.error('Login hatası:', error)
@@ -179,6 +233,13 @@ export default function LoginPage() {
             <Link href="/forgot-password" className="text-sm text-blue-600 hover:underline">
               Şifremi Unuttum?
             </Link>
+            
+            {/* Safari uyarısı */}
+            {isSafariBrowser && (
+              <div className="text-xs text-amber-600 text-center p-2 bg-amber-50 rounded">
+                Safari tarayıcısı algılandı. Giriş sorunları yaşarsanız Chrome veya Firefox kullanmanızı öneririz.
+              </div>
+            )}
             
             {/* Debug paneli */}
             <div className="mt-4 space-y-2">

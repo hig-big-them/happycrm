@@ -2211,9 +2211,7 @@ export default function PipelinesPage() {
 
       {/* Mobile FAB */}
       <FloatingActionButton
-        onNewLead={activePipeline ? () => setIsLeadCreateOpen(true) : undefined}
-        onNewStage={activePipeline ? () => setIsStageModalOpen(true) : undefined}
-        onNewPipeline={() => setIsPipelineModalOpen(true)}
+        onNewLead={activePipeline ? handleNewLeadClick : undefined}
       />
     </div>
   );
