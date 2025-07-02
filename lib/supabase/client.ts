@@ -1,40 +1,41 @@
 import { createBrowserClient } from '@supabase/ssr'
+import { Database } from '@/types/supabase'
 
-// Singleton pattern to ensure only one client instance
-let clientInstance: ReturnType<typeof createBrowserClient> | null = null
+// Define a singleton instance variable.
+let supabaseSingleton: ReturnType<typeof createBrowserClient<Database>> | null = null
 
-export function createClient() {
-  if (typeof window === 'undefined') {
-    // Server-side: always create new instance
-    return createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-  }
-  
-  // Client-side: use singleton
-  if (!clientInstance) {
-    clientInstance = createBrowserClient(
+function getSupabaseBrowserClient() {
+  // If the singleton instance doesn't exist, create it.
+  if (!supabaseSingleton) {
+    supabaseSingleton = createBrowserClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         auth: {
-          autoRefreshToken: true, // Re-enable after fixing singleton pattern
+          // These options are now standard and generally safe.
+          autoRefreshToken: true,
           persistSession: true,
           detectSessionInUrl: true,
-          // Add retry configuration to prevent infinite loops
-          retryOptions: {
-            maxRetries: 1,
-            retryDelay: 2000
-          }
-        }
+        },
       }
     )
   }
-  
-  return clientInstance
+  return supabaseSingleton
 }
 
-// DEPRECATED: Do not use these exports
-// export const supabase = createClient() // REMOVED - this causes multiple instances
+export function createClient() {
+  // On the server, this check prevents the singleton from being used.
+  // A new instance is created for each server-side request.
+  if (typeof window === 'undefined') {
+    return createBrowserClient<Database>(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+  }
+
+  // On the browser, use the singleton instance.
+  return getSupabaseBrowserClient()
+}
+
+// DEPRECATED: This export remains for backward compatibility but should be avoided.
 export const createClientSideSupabase = createClient 
