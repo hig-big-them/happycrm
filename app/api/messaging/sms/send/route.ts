@@ -6,25 +6,20 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/utils/supabase/service';
-import twilio from 'twilio';
+import { sendMessage, getWebhookUrl } from '@/lib/services/twilio-whatsapp-service';
+import { randomUUID } from 'crypto';
 
 export async function POST(request: NextRequest) {
-  // Twilio client'ı istek geldiğinde oluştur
-  const twilioClient = twilio(
-    process.env.TWILIO_ACCOUNT_SID,
-    process.env.TWILIO_AUTH_TOKEN
-  );
-
   const supabase = createClient();
 
   try {
     const body = await request.json();
-    const { leadId, to, content } = body;
+    const { leadId, to, content, mediaUrl } = body;
 
     // Input validation
-    if (!leadId || !to || !content) {
+    if (!leadId || !to || (!content && !mediaUrl)) {
       return NextResponse.json(
-        { success: false, error: 'Lead ID, telefon numarası ve mesaj içeriği gerekli' },
+        { success: false, error: 'Lead ID, telefon numarası ve mesaj içeriği/medya gerekli' },
         { status: 400 }
       );
     }
@@ -32,7 +27,7 @@ export async function POST(request: NextRequest) {
     // Lead'i doğrula
     const { data: lead, error: leadError } = await supabase
       .from('leads')
-      .select('id, lead_name, contact_phone')
+      .select('id, name, phone')
       .eq('id', leadId)
       .single();
 
@@ -45,69 +40,54 @@ export async function POST(request: NextRequest) {
 
     // Telefon numarasını formatla
     const formattedPhone = formatPhoneNumber(to);
+    
+    // Webhook URL'sini oluştur
+    const callbackUrl = getWebhookUrl();
 
     // Twilio ile SMS gönder
-    const message = await twilioClient.messages.create({
-      body: content,
-      from: process.env.TWILIO_PHONE_NUMBER,
-      to: formattedPhone
-    });
+    const result = await sendMessage(formattedPhone, content || '', 'sms', mediaUrl, callbackUrl);
 
-    // Mesajı veritabanına kaydet
-    const { data: savedMessage, error: saveError } = await supabase
-      .from('sms_messages')
-      .insert({
-        message_sid: message.sid,
-        lead_id: leadId,
-        to_number: formattedPhone,
-        content: content,
-        status: message.status,
-        sent_at: new Date().toISOString(),
-        is_incoming: false
-      })
-      .select()
-      .single();
+    if (result.success) {
+      // Mesajı veritabanına kaydet
+      const messageId = randomUUID();
+      const { error: messageError } = await supabase
+        .from('messages')
+        .insert({
+          id: messageId,
+          lead_id: leadId,
+          body: content || 'Media message',
+          media_url: mediaUrl || null,
+          twilio_message_sid: result.messageSid,
+          is_from_lead: false,
+          is_read: true,
+          status: result.status || 'queued',
+          channel: 'sms',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
 
-    if (saveError) {
-      console.error('Failed to save SMS message:', saveError);
-    }
+      if (messageError) {
+        console.error('Failed to save SMS message:', messageError);
+      }
 
-    // Activity log ekle
-    await supabase.from('activities').insert({
-      lead_id: leadId,
-      activity_type: 'sms_sent',
-      description: `SMS mesajı gönderildi`,
-      details: {
-        message_sid: message.sid,
-        to: formattedPhone,
-        content_preview: content.substring(0, 100)
-      },
-      activity_date: new Date().toISOString()
-    });
-
-    return NextResponse.json({
-      success: true,
-      messageId: message.sid,
-      status: message.status,
-      message: 'SMS başarıyla gönderildi'
-    });
-
-  } catch (error) {
-    console.error('SMS send error:', error);
-    
-    // Twilio hata detayları
-    if (error instanceof Error && 'code' in error) {
-      const twilioError = error as any;
+      return NextResponse.json({
+        success: true,
+        messageId: result.messageSid,
+        status: result.status,
+        message: 'SMS başarıyla gönderildi'
+      });
+    } else {
       return NextResponse.json(
         { 
           success: false, 
-          error: `SMS gönderim hatası: ${twilioError.message}`,
-          code: twilioError.code
+          error: result.error || 'SMS gönderim hatası'
         },
         { status: 500 }
       );
     }
 
+  } catch (error) {
+    console.error('SMS send error:', error);
     return NextResponse.json(
       { success: false, error: 'SMS gönderilirken hata oluştu' },
       { status: 500 }

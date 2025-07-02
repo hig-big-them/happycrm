@@ -12,6 +12,8 @@ import {
   Message,
   TwilioContentTemplate
 } from './message-types'
+import { sendMessage, sendWhatsAppTemplate, getWebhookUrl } from '@/lib/services/twilio-whatsapp-service'
+import { randomUUID } from 'crypto'
 import twilio from 'twilio'
 
 const createMessageSchema = z.object({
@@ -90,60 +92,59 @@ export const sendSMS = authActionClient
     
     try {
       let messageBody = ''
-      let twilioResponse
+      const callbackUrl = getWebhookUrl()
+      let result
 
       if (parsedInput.content_sid) {
-        // Content SID kullanarak template mesajı gönder
-        twilioResponse = await twilioClient.messages.create({
-          contentSid: parsedInput.content_sid,
-          from: process.env.TWILIO_PHONE_NUMBER,
-          to: parsedInput.recipient_phone,
-          contentVariables: parsedInput.template_variables ? JSON.stringify(parsedInput.template_variables) : undefined
-        })
-        
-        // Template content'ini al
-        try {
-          const content = await twilioClient.content.v1.contents(parsedInput.content_sid).fetch()
-          messageBody = content.types?.['twilio/text']?.body || 'Template mesajı'
-          
-          // Template değişkenlerini değiştir
-          if (parsedInput.template_variables) {
-            Object.entries(parsedInput.template_variables).forEach(([key, value]) => {
-              messageBody = messageBody.replace(new RegExp(`{{${key}}}`, 'g'), value)
-            })
-          }
-        } catch (contentError) {
-          messageBody = 'Template mesajı gönderildi'
+        // Template mesajı gönder
+        const templateParams: Record<string, string> = {}
+        if (parsedInput.template_variables) {
+          Object.keys(parsedInput.template_variables).forEach((key, index) => {
+            templateParams[(index + 1).toString()] = parsedInput.template_variables![key]
+          })
         }
+        
+        result = await sendWhatsAppTemplate(
+          parsedInput.recipient_phone,
+          parsedInput.content_sid,
+          templateParams,
+          callbackUrl
+        )
+        messageBody = `Template: ${parsedInput.content_sid}`
       } else if (parsedInput.custom_message) {
         // Özel mesaj gönder
-        twilioResponse = await twilioClient.messages.create({
-          body: parsedInput.custom_message,
-          from: process.env.TWILIO_PHONE_NUMBER,
-          to: parsedInput.recipient_phone
-        })
+        result = await sendMessage(
+          parsedInput.recipient_phone,
+          parsedInput.custom_message,
+          'sms',
+          undefined,
+          callbackUrl
+        )
         messageBody = parsedInput.custom_message
       } else {
         throw new Error('Content SID veya özel mesaj gerekli')
       }
 
+      if (!result.success) {
+        throw new Error(result.error || 'SMS gönderilemedi')
+      }
+
       // Mesajı veritabanına kaydet
+      const messageId = randomUUID()
       const { data: messageData, error: messageError } = await supabase
         .from('messages')
         .insert({
+          id: messageId,
           lead_id: parsedInput.lead_id,
-          content: messageBody,
-          direction: 'outbound',
+          body: messageBody,
+          twilio_message_sid: result.messageSid,
+          is_from_lead: false,
+          is_read: true,
+          status: result.status || 'queued',
           channel: 'sms',
-          status: twilioResponse.status === 'sent' || twilioResponse.status === 'queued' ? 'sent' : 'failed',
-          sender_id: userData.user.id,
-          recipient_phone: parsedInput.recipient_phone,
-          metadata: {
-            twilio_sid: twilioResponse.sid,
-            content_sid: parsedInput.content_sid,
-            template_variables: parsedInput.template_variables
-          },
-          created_at: new Date().toISOString()
+          template_id: parsedInput.content_sid || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
         .select()
         .single()
@@ -151,7 +152,7 @@ export const sendSMS = authActionClient
       if (messageError) throw new Error(messageError.message)
 
       revalidatePath('/leads')
-      return { data: messageData, twilioSid: twilioResponse.sid, success: true }
+      return { data: messageData, twilioSid: result.messageSid, success: true }
     } catch (error) {
       throw new Error(`SMS gönderim hatası: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`)
     }
@@ -167,64 +168,60 @@ export const sendWhatsApp = authActionClient
     
     try {
       let messageBody = ''
-      let twilioResponse
-
-      // WhatsApp numara formatını düzenle
-      const whatsappNumber = `whatsapp:${parsedInput.recipient_phone}`
-      const fromNumber = `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`
+      const callbackUrl = getWebhookUrl()
+      let result
 
       if (parsedInput.content_sid) {
-        // Content SID kullanarak template mesajı gönder
-        twilioResponse = await twilioClient.messages.create({
-          contentSid: parsedInput.content_sid,
-          from: fromNumber,
-          to: whatsappNumber,
-          contentVariables: parsedInput.template_variables ? JSON.stringify(parsedInput.template_variables) : undefined
-        })
-        
-        // Template content'ini al
-        try {
-          const content = await twilioClient.content.v1.contents(parsedInput.content_sid).fetch()
-          messageBody = content.types?.['twilio/text']?.body || 'Template mesajı'
-          
-          // Template değişkenlerini değiştir
-          if (parsedInput.template_variables) {
-            Object.entries(parsedInput.template_variables).forEach(([key, value]) => {
-              messageBody = messageBody.replace(new RegExp(`{{${key}}}`, 'g'), value)
-            })
-          }
-        } catch (contentError) {
-          messageBody = 'Template mesajı gönderildi'
+        // Template mesajı gönder
+        const templateParams: Record<string, string> = {}
+        if (parsedInput.template_variables) {
+          Object.keys(parsedInput.template_variables).forEach((key, index) => {
+            templateParams[(index + 1).toString()] = parsedInput.template_variables![key]
+          })
         }
+        
+        result = await sendWhatsAppTemplate(
+          parsedInput.recipient_phone,
+          parsedInput.content_sid,
+          templateParams,
+          callbackUrl
+        )
+        messageBody = `Template: ${parsedInput.content_sid}`
       } else if (parsedInput.custom_message) {
         // Özel mesaj gönder
-        twilioResponse = await twilioClient.messages.create({
-          body: parsedInput.custom_message,
-          from: fromNumber,
-          to: whatsappNumber
-        })
+        result = await sendMessage(
+          parsedInput.recipient_phone,
+          parsedInput.custom_message,
+          'whatsapp',
+          undefined,
+          callbackUrl
+        )
         messageBody = parsedInput.custom_message
       } else {
         throw new Error('Content SID veya özel mesaj gerekli')
       }
 
+      if (!result.success) {
+        throw new Error(result.error || 'WhatsApp mesajı gönderilemedi')
+      }
+
       // Mesajı veritabanına kaydet
+      const messageId = randomUUID()
       const { data: messageData, error: messageError } = await supabase
         .from('messages')
         .insert({
+          id: messageId,
           lead_id: parsedInput.lead_id,
-          content: messageBody,
-          direction: 'outbound',
+          body: messageBody,
+          twilio_message_sid: result.messageSid,
+          is_from_lead: false,
+          is_read: true,
+          status: result.status || 'queued',
           channel: 'whatsapp',
-          status: twilioResponse.status === 'sent' || twilioResponse.status === 'queued' ? 'sent' : 'failed',
-          sender_id: userData.user.id,
-          recipient_phone: parsedInput.recipient_phone,
-          metadata: {
-            twilio_sid: twilioResponse.sid,
-            content_sid: parsedInput.content_sid,
-            template_variables: parsedInput.template_variables
-          },
-          created_at: new Date().toISOString()
+          template_id: parsedInput.content_sid || null,
+          template_name: parsedInput.content_sid || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
         .select()
         .single()
@@ -232,7 +229,7 @@ export const sendWhatsApp = authActionClient
       if (messageError) throw new Error(messageError.message)
 
       revalidatePath('/leads')
-      return { data: messageData, twilioSid: twilioResponse.sid, success: true }
+      return { data: messageData, twilioSid: result.messageSid, success: true }
     } catch (error) {
       throw new Error(`WhatsApp gönderim hatası: ${error instanceof Error ? error.message : 'Bilinmeyen hata'}`)
     }

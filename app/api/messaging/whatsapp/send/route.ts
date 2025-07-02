@@ -1,20 +1,20 @@
 /**
  * 🟢 WhatsApp Message Sending API
  * 
- * WhatsApp Cloud API ile mesaj gönderme endpoint'i
+ * Twilio WhatsApp API ile mesaj gönderme endpoint'i
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createWhatsAppService } from '@/lib/services/whatsapp-cloud-service';
+import { sendMessage, sendWhatsAppTemplate, getWebhookUrl } from '@/lib/services/twilio-whatsapp-service';
 import { createClient } from '@/lib/utils/supabase/service';
+import { randomUUID } from 'crypto';
 
 export async function POST(request: NextRequest) {
   const supabase = createClient();
-  const whatsappService = createWhatsAppService();
 
   try {
     const body = await request.json();
-    const { leadId, to, type, content, templateName, templateVariables } = body;
+    const { leadId, to, type, content, templateSid, templateVariables, mediaUrl } = body;
 
     // Input validation
     if (!leadId || !to) {
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     // Lead'i doğrula
     const { data: lead, error: leadError } = await supabase
       .from('leads')
-      .select('id, lead_name, contact_phone')
+      .select('id, name, phone')
       .eq('id', leadId)
       .single();
 
@@ -38,19 +38,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Webhook URL'sini oluştur
+    const callbackUrl = getWebhookUrl();
     let result;
+    let messageBody = '';
 
-    if (type === 'template' && templateName) {
+    if (type === 'template' && templateSid) {
       // Template mesajı gönder
-      result = await whatsappService.sendTemplateMessage(
-        to,
-        templateName,
-        'tr',
-        templateVariables
-      );
-    } else if (type === 'text' && content) {
-      // Text mesajı gönder
-      result = await whatsappService.sendTextMessage(to, content);
+      const templateParams: Record<string, string> = {};
+      if (templateVariables) {
+        Object.keys(templateVariables).forEach((key, index) => {
+          templateParams[(index + 1).toString()] = templateVariables[key];
+        });
+      }
+      
+      result = await sendWhatsAppTemplate(to, templateSid, templateParams, callbackUrl);
+      messageBody = `Template: ${templateSid}`;
+    } else if (type === 'text' && (content || mediaUrl)) {
+      // Text veya medya mesajı gönder
+      result = await sendMessage(to, content || '', 'whatsapp', mediaUrl, callbackUrl);
+      messageBody = content || 'Media message';
     } else {
       return NextResponse.json(
         { success: false, error: 'Geçersiz mesaj tipi veya içerik eksik' },
@@ -59,23 +66,33 @@ export async function POST(request: NextRequest) {
     }
 
     if (result.success) {
-      // Activity log ekle
-      await supabase.from('activities').insert({
-        lead_id: leadId,
-        activity_type: 'whatsapp_message_sent',
-        description: `WhatsApp mesajı gönderildi: ${type === 'template' ? templateName : 'text'}`,
-        details: {
-          message_id: result.messageId,
-          to: to,
-          type: type,
-          content: type === 'template' ? { template: templateName, variables: templateVariables } : { text: content }
-        },
-        activity_date: new Date().toISOString()
-      });
+      // Mesajı veritabanına kaydet
+      const messageId = randomUUID();
+      const { error: messageError } = await supabase
+        .from('messages')
+        .insert({
+          id: messageId,
+          lead_id: leadId,
+          body: messageBody,
+          media_url: mediaUrl || null,
+          twilio_message_sid: result.messageSid,
+          is_from_lead: false,
+          is_read: true,
+          status: result.status || 'queued',
+          channel: 'whatsapp',
+          template_id: type === 'template' ? templateSid : null,
+          template_name: type === 'template' ? templateSid : null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
+
+      if (messageError) {
+        console.error('Failed to save message:', messageError);
+      }
 
       return NextResponse.json({
         success: true,
-        messageId: result.messageId,
+        messageId: result.messageSid,
         message: 'WhatsApp mesajı başarıyla gönderildi'
       });
     } else {
