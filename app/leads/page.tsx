@@ -791,14 +791,14 @@ export default function LeadsPage() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-12">
+              <TableHead className="w-8">
                 <Checkbox 
                   checked={currentLeads.length > 0 && selectedLeads.length === currentLeads.length}
                   onCheckedChange={handleSelectAll}
+                  className="h-3 w-3"
                 />
               </TableHead>
               <TableHead>Lead Adı</TableHead>
-              <TableHead>Şirket</TableHead>
               <TableHead>Pipeline</TableHead>
               <TableHead>Aşama</TableHead>
               <TableHead>Değer</TableHead>
@@ -814,6 +814,7 @@ export default function LeadsPage() {
                   <Checkbox 
                     checked={selectedLeads.includes(lead.id)}
                     onCheckedChange={(checked) => handleSelectLead(lead.id, checked as boolean)}
+                    className="h-3 w-3"
                   />
                 </TableCell>
                 <TableCell>
@@ -835,7 +836,6 @@ export default function LeadsPage() {
                     </div>
                   </div>
                 </TableCell>
-                <TableCell>{lead.company?.company_name || '-'}</TableCell>
                 <TableCell>{lead.pipeline?.name || '-'}</TableCell>
                 <TableCell>
                   {lead.stage && (

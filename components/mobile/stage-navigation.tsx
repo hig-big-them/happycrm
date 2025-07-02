@@ -10,7 +10,6 @@ interface StageNavigationControlsProps {
   totalStages: number
   onPrevious: () => void
   onNext: () => void
-  stageName?: string
   className?: string
 }
 
@@ -19,7 +18,6 @@ export function StageNavigationControls({
   totalStages,
   onPrevious,
   onNext,
-  stageName,
   className
 }: StageNavigationControlsProps) {
   return (
@@ -29,29 +27,34 @@ export function StageNavigationControls({
         size="sm"
         onClick={onPrevious}
         disabled={currentStageIndex === 0}
-        className="flex items-center gap-1 h-9 px-3"
+        className="flex items-center gap-2"
       >
         <ChevronLeft className="h-4 w-4" />
-        <span className="hidden sm:inline">Önceki</span>
+        Önceki
       </Button>
-      
-      <div className="text-center px-3">
-        {stageName && (
-          <h3 className="font-medium text-sm mb-0.5">{stageName}</h3>
-        )}
-        <p className="text-xs text-muted-foreground">
-          {currentStageIndex + 1} / {totalStages}
-        </p>
+
+      <div className="flex items-center gap-1">
+        {Array.from({ length: totalStages }, (_, index) => (
+          <div
+            key={index}
+            className={cn(
+              "w-2 h-2 rounded-full transition-colors",
+              index === currentStageIndex
+                ? "bg-primary"
+                : "bg-muted-foreground/20"
+            )}
+          />
+        ))}
       </div>
-      
+
       <Button
         variant="outline"
         size="sm"
         onClick={onNext}
         disabled={currentStageIndex === totalStages - 1}
-        className="flex items-center gap-1 h-9 px-3"
+        className="flex items-center gap-2"
       >
-        <span className="hidden sm:inline">Sonraki</span>
+        Sonraki
         <ChevronRight className="h-4 w-4" />
       </Button>
     </div>

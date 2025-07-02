@@ -15,8 +15,7 @@ import { Button } from '@/components/ui/button'
 interface BottomSheetProps {
   isOpen: boolean
   onClose: () => void
-  title?: string
-  description?: string
+  title: string
   children: React.ReactNode
   className?: string
   showCloseButton?: boolean
@@ -27,7 +26,6 @@ export function BottomSheet({
   isOpen,
   onClose,
   title,
-  description,
   children,
   className,
   showCloseButton = true,
@@ -66,45 +64,20 @@ export function BottomSheet({
   // Default Dialog with bottom sheet styling on mobile
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent
+      <DialogContent 
         className={cn(
-          // Mobile bottom sheet styling
-          "fixed inset-x-0 bottom-0 top-auto max-w-none mx-0",
-          "rounded-t-2xl rounded-b-none",
-          "translate-y-0 duration-300",
-          "max-h-[90vh] flex flex-col",
-          // Desktop modal styling
-          "md:relative md:top-auto md:bottom-auto",
-          "md:max-w-md md:mx-auto md:rounded-lg",
-          "md:max-h-[85vh]",
+          "fixed inset-x-0 bottom-0 top-auto max-w-none mx-0 rounded-t-lg rounded-b-none translate-y-0",
+          "md:relative md:top-auto md:bottom-auto md:max-w-md md:mx-auto md:rounded-lg",
+          "data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom-full",
+          "data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom-full",
           className
         )}
       >
-        {/* Drag handle for mobile */}
-        <div className="md:hidden">
-          <div className="mx-auto w-12 h-1.5 flex-shrink-0 rounded-full bg-gray-300 mb-4" />
-        </div>
-
-        {(title || showCloseButton) && (
-          <DialogHeader className="pb-4 border-b flex-shrink-0">
-            {title && <DialogTitle className="text-left">{title}</DialogTitle>}
-            {description && (
-              <p className="text-sm text-muted-foreground mt-1">{description}</p>
-            )}
-            {showCloseButton && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="absolute right-2 top-2 md:hidden"
-                onClick={onClose}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </DialogHeader>
-        )}
-
-        <div className="overflow-y-auto flex-1 py-4">
+        <DialogHeader className="pb-4 border-b">
+          <div className="w-8 h-1 bg-muted rounded-full mx-auto mb-4 md:hidden" />
+          <DialogTitle className="text-left">{title}</DialogTitle>
+        </DialogHeader>
+        <div className="max-h-[70vh] overflow-y-auto">
           {children}
         </div>
       </DialogContent>

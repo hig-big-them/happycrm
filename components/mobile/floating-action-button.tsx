@@ -1,6 +1,7 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Plus, Target, X, Users, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -20,6 +21,12 @@ export function FloatingActionButton({
   className
 }: FloatingActionButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const pathname = usePathname()
+
+  // Navigation sonrasında menüyü kapat
+  useEffect(() => {
+    setIsOpen(false)
+  }, [pathname])
 
   const toggleMenu = () => {
     setIsOpen(!isOpen)

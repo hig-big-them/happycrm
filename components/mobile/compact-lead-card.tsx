@@ -9,7 +9,7 @@ import {
   Phone, 
   Mail, 
   MessageCircle, 
-  ArrowUpDown, 
+  Eye, 
   Calendar,
   DollarSign,
   Building,
@@ -48,9 +48,8 @@ interface CompactLeadCardProps {
   onQuickEdit?: () => void
   onEdit?: () => void
   onDelete?: () => void
-  onCall?: () => void
-  onEmail?: () => void
   onMessage?: () => void
+  onEmail?: () => void
   showActions?: boolean
   className?: string
 }
@@ -86,9 +85,8 @@ export function CompactLeadCard({
   onQuickEdit,
   onEdit,
   onDelete,
-  onCall,
-  onEmail,
   onMessage,
+  onEmail,
   showActions = true,
   className
 }: CompactLeadCardProps) {
@@ -164,21 +162,18 @@ export function CompactLeadCard({
                     onClick={(e) => handleAction(e, onQuickEdit)}
                     className="h-7 w-7 p-0"
                   >
-                    <ArrowUpDown className="h-3.5 w-3.5" />
+                    <Eye className="h-3.5 w-3.5" />
                   </Button>
                 )}
                 
-                {lead.contact_phone && onCall && (
+                {lead.contact_phone && (
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={(e) => handleAction(e, onCall)}
+                    onClick={(e) => handleAction(e, onMessage)}
                     className="h-7 w-7 p-0"
-                    asChild
                   >
-                    <a href={`tel:${lead.contact_phone}`}>
-                      <Phone className="h-3.5 w-3.5" />
-                    </a>
+                    <MessageCircle className="h-3.5 w-3.5" />
                   </Button>
                 )}
               </div>

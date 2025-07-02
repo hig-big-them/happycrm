@@ -36,6 +36,7 @@ import {
   ArrowUpDown
 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { useRouter } from "next/navigation";
 
 // Mobil komponentler ve hook'lar
 import { useMobile, useMediaQuery } from "../../hooks/use-mobile";
@@ -1026,7 +1027,40 @@ export default function PipelinesPage() {
   const [quickEditLead, setQuickEditLead] = React.useState<Lead | null>(null);
   const [isQuickEditOpen, setIsQuickEditOpen] = React.useState(false);
 
-  async function loadPipelineData() {
+  const router = useRouter();
+
+  // Auto-select first pipeline and stage for mobile
+  React.useEffect(() => {
+    if (isMobile && pipelines.length > 0 && !activePipeline) {
+      const firstPipeline = pipelines.find(p => p.is_active !== false)
+      if (firstPipeline) {
+        setActivePipeline(firstPipeline.id)
+      }
+    }
+  }, [isMobile, pipelines, activePipeline])
+
+  React.useEffect(() => {
+    if (isMobile && activePipeline && !mobileActiveStage) {
+      const pipelineStages = stages.filter(s => s.pipeline_id === activePipeline)
+      if (pipelineStages.length > 0) {
+        const firstStage = pipelineStages.sort((a, b) => a.order_position - b.order_position)[0]
+        setMobileActiveStage(firstStage.id)
+      }
+    }
+  }, [isMobile, activePipeline, stages, mobileActiveStage])
+
+  // Auto-reset mobile stage when pipeline changes
+  React.useEffect(() => {
+    if (isMobile && activePipeline) {
+      const pipelineStages = stages.filter(s => s.pipeline_id === activePipeline)
+      if (pipelineStages.length > 0) {
+        const firstStage = pipelineStages.sort((a, b) => a.order_position - b.order_position)[0]
+        setMobileActiveStage(firstStage.id)
+      }
+    }
+  }, [isMobile, activePipeline, stages])
+
+  const loadPipelineData = React.useCallback(async () => {
     const supabase = createClient();
     
     try {
@@ -1061,7 +1095,7 @@ export default function PipelinesPage() {
       console.error("Pipeline data yükleme hatası:", err);
       setError("Veriler yüklenirken hata oluştu");
     }
-  }
+  }, [activePipeline]);
 
   async function loadStagesAndLeads(pipelineId: string) {
     const supabase = createClient();
@@ -1103,7 +1137,7 @@ export default function PipelinesPage() {
       setIsLoading(false);
     }
     init();
-  }, []);
+  }, [loadPipelineData]);
 
   React.useEffect(() => {
     if (activePipeline) {
@@ -2018,6 +2052,9 @@ export default function PipelinesPage() {
                                 onQuickEdit={() => {
                                   setQuickEditLead(lead);
                                   setIsQuickEditOpen(true);
+                                }}
+                                onMessage={() => {
+                                  router.push(`/messaging?leadId=${lead.id}`);
                                 }}
                                 onEdit={() => {
                                   setEditingLead(lead);
