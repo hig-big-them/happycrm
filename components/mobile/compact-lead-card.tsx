@@ -153,25 +153,27 @@ export function CompactLeadCard({
           {/* Actions */}
           {showActions && (
             <div className="flex items-center gap-1">
-              {/* Quick Actions */}
-              <div className="flex flex-col gap-1">
-                {onQuickEdit && (
+              {/* Quick Actions - Yan Yana */}
+              <div className="flex items-center gap-1">
+                {onTap && (
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={(e) => handleAction(e, onQuickEdit)}
+                    onClick={(e) => handleAction(e, onTap)}
                     className="h-7 w-7 p-0"
+                    title="Lead Detayları"
                   >
                     <Eye className="h-3.5 w-3.5" />
                   </Button>
                 )}
                 
-                {lead.contact_phone && (
+                {lead.contact_phone && onMessage && (
                   <Button
                     size="sm"
                     variant="ghost"
                     onClick={(e) => handleAction(e, onMessage)}
                     className="h-7 w-7 p-0"
+                    title="Mesaj Gönder"
                   >
                     <MessageCircle className="h-3.5 w-3.5" />
                   </Button>
@@ -192,21 +194,28 @@ export function CompactLeadCard({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-40">
                   {onEdit && (
-                    <DropdownMenuItem onClick={() => handleAction({} as any, onEdit)}>
+                    <DropdownMenuItem onClick={onEdit}>
                       <Edit className="h-3.5 w-3.5 mr-2" />
                       Düzenle
                     </DropdownMenuItem>
                   )}
                   
+                  {onQuickEdit && (
+                    <DropdownMenuItem onClick={onQuickEdit}>
+                      <Eye className="h-3.5 w-3.5 mr-2" />
+                      Stage Değiştir
+                    </DropdownMenuItem>
+                  )}
+                  
                   {lead.contact_email && onEmail && (
-                    <DropdownMenuItem onClick={() => handleAction({} as any, onEmail)}>
+                    <DropdownMenuItem onClick={onEmail}>
                       <Mail className="h-3.5 w-3.5 mr-2" />
                       E-posta Gönder
                     </DropdownMenuItem>
                   )}
                   
                   {onMessage && (
-                    <DropdownMenuItem onClick={() => handleAction({} as any, onMessage)}>
+                    <DropdownMenuItem onClick={onMessage}>
                       <MessageCircle className="h-3.5 w-3.5 mr-2" />
                       Mesaj Gönder
                     </DropdownMenuItem>
@@ -216,7 +225,7 @@ export function CompactLeadCard({
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
-                        onClick={() => handleAction({} as any, onDelete)}
+                        onClick={onDelete}
                         className="text-destructive"
                       >
                         <Trash2 className="h-3.5 w-3.5 mr-2" />

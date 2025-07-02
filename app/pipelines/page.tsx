@@ -2060,8 +2060,9 @@ export default function PipelinesPage() {
                                   setEditingLead(lead);
                                   setIsLeadEditOpen(true);
                                 }}
-                                onCall={lead.contact_phone ? () => window.location.href = `tel:${lead.contact_phone}` : undefined}
-                                onEmail={lead.contact_email ? () => window.location.href = `mailto:${lead.contact_email}` : undefined}
+                                onEmail={lead.contact_email ? () => {
+                                  window.location.href = `mailto:${lead.contact_email}`;
+                                } : undefined}
                               />
                             ))}
                           </div>

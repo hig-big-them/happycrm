@@ -34,9 +34,9 @@ export function FloatingActionButton({
   }
 
   const handleAction = (action: () => void) => {
-    action()
-    setIsOpen(false)
     triggerHaptic('medium')
+    setIsOpen(false)
+    setTimeout(action, 100)
   }
 
   const actions = [
