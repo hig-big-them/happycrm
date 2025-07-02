@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Plus, Target, X, Users, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -22,11 +22,41 @@ export function FloatingActionButton({
 }: FloatingActionButtonProps) {
   const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
 
-  // Navigation sonrasında menüyü kapat
+  // Navigation sonrasında menüyü kapat - multiple checks
   useEffect(() => {
     setIsOpen(false)
   }, [pathname])
+
+  // Route değişikliklerini dinle ve kapat
+  useEffect(() => {
+    const handleRouteChange = () => {
+      setIsOpen(false)
+    }
+    
+    // Manual route change listening
+    window.addEventListener('popstate', handleRouteChange)
+    
+    return () => {
+      window.removeEventListener('popstate', handleRouteChange)
+    }
+  }, [])
+
+  // Click outside to close
+  useEffect(() => {
+    if (isOpen) {
+      const handleClickOutside = (event: MouseEvent) => {
+        const target = event.target as Element
+        if (!target.closest('[data-fab-menu]')) {
+          setIsOpen(false)
+        }
+      }
+      
+      document.addEventListener('click', handleClickOutside)
+      return () => document.removeEventListener('click', handleClickOutside)
+    }
+  }, [isOpen])
 
   const toggleMenu = () => {
     setIsOpen(!isOpen)
@@ -35,8 +65,13 @@ export function FloatingActionButton({
 
   const handleAction = (action: () => void) => {
     triggerHaptic('medium')
-    setIsOpen(false)
-    setTimeout(action, 100)
+    setIsOpen(false) // Hemen kapat
+    // Action'ı çalıştır
+    try {
+      action()
+    } catch (error) {
+      console.error('FAB action error:', error)
+    }
   }
 
   const actions = [
@@ -63,7 +98,10 @@ export function FloatingActionButton({
   if (actions.length === 0) return null
 
   return (
-    <div className={cn("fixed bottom-4 right-4 z-50 md:hidden", className)}>
+    <div 
+      className={cn("fixed bottom-4 right-4 z-50 md:hidden", className)}
+      data-fab-menu
+    >
       {/* Action buttons */}
       <div
         className={cn(

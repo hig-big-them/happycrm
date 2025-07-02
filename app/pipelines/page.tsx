@@ -1031,34 +1031,41 @@ export default function PipelinesPage() {
 
   // Auto-select first pipeline and stage for mobile
   React.useEffect(() => {
+    // Sadece mobilde ve pipeline yoksa çalış
     if (isMobile && pipelines.length > 0 && !activePipeline) {
-      const firstPipeline = pipelines.find(p => p.is_active !== false)
-      if (firstPipeline) {
-        setActivePipeline(firstPipeline.id)
+      const firstActivePipeline = pipelines.find(p => p.is_active !== false)
+      if (firstActivePipeline) {
+        console.log('Auto-selecting first pipeline:', firstActivePipeline.name)
+        setActivePipeline(firstActivePipeline.id)
       }
     }
   }, [isMobile, pipelines, activePipeline])
 
   React.useEffect(() => {
-    if (isMobile && activePipeline && !mobileActiveStage) {
+    // Mobilde pipeline seçildiğinde ilk stage'i seç
+    if (isMobile && activePipeline && stages.length > 0) {
       const pipelineStages = stages.filter(s => s.pipeline_id === activePipeline)
-      if (pipelineStages.length > 0) {
+      if (pipelineStages.length > 0 && !mobileActiveStage) {
         const firstStage = pipelineStages.sort((a, b) => a.order_position - b.order_position)[0]
+        console.log('Auto-selecting first stage:', firstStage.name)
         setMobileActiveStage(firstStage.id)
       }
     }
   }, [isMobile, activePipeline, stages, mobileActiveStage])
 
-  // Auto-reset mobile stage when pipeline changes
+  // Pipeline değiştiğinde stage'i resetle
   React.useEffect(() => {
     if (isMobile && activePipeline) {
       const pipelineStages = stages.filter(s => s.pipeline_id === activePipeline)
       if (pipelineStages.length > 0) {
         const firstStage = pipelineStages.sort((a, b) => a.order_position - b.order_position)[0]
+        console.log('Resetting stage for pipeline change:', firstStage.name)
         setMobileActiveStage(firstStage.id)
+      } else {
+        setMobileActiveStage(null)
       }
     }
-  }, [isMobile, activePipeline, stages])
+  }, [activePipeline]) // Sadece activePipeline değiştiğinde çalış
 
   const loadPipelineData = React.useCallback(async () => {
     const supabase = createClient();
@@ -1086,9 +1093,13 @@ export default function PipelinesPage() {
       }
       setPipelineLeadCounts(counts);
       
-      // İlk pipeline'ı aktif yap
+      // Pipeline otomatik seçimi - aktif pipeline yoksa ilk aktif pipeline'ı seç
       if (pipelinesData && pipelinesData.length > 0 && !activePipeline) {
-        setActivePipeline(pipelinesData[0].id);
+        const firstActivePipeline = pipelinesData.find(p => p.is_active !== false);
+        if (firstActivePipeline) {
+          console.log('Auto-selecting first active pipeline:', firstActivePipeline.name);
+          setActivePipeline(firstActivePipeline.id);
+        }
       }
       
     } catch (err) {
@@ -1360,36 +1371,33 @@ export default function PipelinesPage() {
     const { id, ...updateData } = updatedData;
     if (!id) return;
     
-    // Optimistic update
-    const originalLead = leads.find(lead => lead.id === id);
-    setLeads(prevLeads => 
-      prevLeads.map(lead => 
-        lead.id === id ? { ...lead, ...updateData } : lead
-      )
-    );
-    setIsLeadEditOpen(false);
-    setEditingLead(null);
-    
-    // Database update
-    const supabase = createClient();
-    const { error } = await supabase
-      .from("leads")
-      .update(updateData)
-      .eq("id", id);
+    try {
+      // Database update first
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("leads")
+        .update(updateData)
+        .eq("id", id);
 
-    if (error) {
-      // Hata olursa orijinal veriyi geri yükle
-      if (originalLead) {
-        setLeads(prevLeads => 
-          prevLeads.map(lead => 
-            lead.id === id ? originalLead : lead
-          )
-        );
+      if (error) {
+        console.error("Lead güncelleme hatası:", error);
+        throw error;
       }
-      console.error("Lead güncelleme hatası:", error);
-      if (activePipeline) {
-        await loadStagesAndLeads(activePipeline);
-      }
+
+      // Success: Update local state
+      setLeads(prevLeads => 
+        prevLeads.map(lead => 
+          lead.id === id ? { ...lead, ...updateData } : lead
+        )
+      );
+      
+      // Close modal after successful update
+      setIsLeadEditOpen(false);
+      setEditingLead(null);
+      
+    } catch (error) {
+      console.error("Lead update failed:", error);
+      // Don't close modal on error, let user retry
     }
   };
 
