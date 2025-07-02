@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useEffect } from 'react'
 
 interface PlatformInfo {
@@ -20,18 +22,15 @@ export function usePlatform(): PlatformInfo {
   })
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    // Ensure this runs only on the client
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+      return
+    }
 
     try {
-      const userAgent = (window.navigator && window.navigator.userAgent) || ''
-      
-      let isCapacitor = false
-      try {
-        isCapacitor = !!(window as any).Capacitor
-      } catch (e) {
-        // Capacitor not available, which is fine
-      }
-      
+      const userAgent = navigator.userAgent || ''
+      const isCapacitor = !!(window as any).Capacitor
+
       const isIOS = /iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream
       const isAndroid = /Android/.test(userAgent)
       const isMobile = isIOS || isAndroid || /Mobile/i.test(userAgent) ||
@@ -64,10 +63,10 @@ export function usePlatform(): PlatformInfo {
 
 // iOS specific utilities
 export function getIOSVersion(): number | null {
-  if (typeof window === 'undefined') return null
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return null
   
   try {
-    const userAgent = (window.navigator && window.navigator.userAgent) || ''
+    const userAgent = navigator.userAgent || ''
     const match = userAgent.match(/OS (\d+)_(\d+)_?(\d+)?/)
     if (match) {
       return parseInt(match[1], 10)
@@ -80,9 +79,11 @@ export function getIOSVersion(): number | null {
 }
 
 export function isIOSStandalone(): boolean {
-  if (typeof window === 'undefined') return false
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false
+  
   try {
-    return (window.navigator as any).standalone === true
+    // navigator.standalone is a non-standard property, mainly for iOS Safari
+    return (navigator as any).standalone === true
   } catch (error) {
     console.warn('iOS standalone detection failed:', error)
     return false
@@ -91,7 +92,9 @@ export function isIOSStandalone(): boolean {
 
 // Safe area utilities for iOS
 export function getSafeAreaInsets() {
-  if (typeof window === 'undefined') return { top: 0, bottom: 0, left: 0, right: 0 }
+  if (typeof window === 'undefined' || typeof document?.documentElement === 'undefined') {
+    return { top: 0, bottom: 0, left: 0, right: 0 }
+  }
   
   try {
     const computedStyle = getComputedStyle(document.documentElement)

@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, useEffect } from 'react'
 
 interface PWAInfo {
@@ -25,28 +27,33 @@ export function usePWA(): PWAInfo & {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
+    // Ensure this runs only on the client where window and navigator are defined
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+      return
+    }
 
     try {
       // Safari-safe standalone check
       let isStandalone = false
       try {
-        isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
-                      (window.navigator as any).standalone === true
+        isStandalone =
+          (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+          (navigator as any).standalone === true
       } catch (e) {
-        // Fallback for older browsers
-        isStandalone = (window.navigator as any).standalone === true
+        console.warn('Standalone check failed:', e)
+        // Attempt a more direct, though less standard, fallback
+        try {
+          isStandalone = (navigator as any).standalone === true
+        } catch (e2) {
+          console.warn('Standalone fallback check failed:', e2)
+        }
       }
 
       // Safari-safe service worker check
-      let isPWAReady = false
-      try {
-        isPWAReady = 'serviceWorker' in navigator
-      } catch (e) {
-        console.warn('Service Worker check failed:', e)
-      }
+      const isPWAReady = 'serviceWorker' in navigator
 
-      const isIOSSafari = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
+      const isIOSSafari =
+        /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
 
       setPWAInfo(prev => ({
         ...prev,
@@ -65,7 +72,7 @@ export function usePWA(): PWAInfo & {
           setPWAInfo(prev => ({
             ...prev,
             canInstall: true,
-            showInstallPrompt: !isStandalone
+            showInstallPrompt: !prev.isStandalone
           }))
         }
 
@@ -90,12 +97,13 @@ export function usePWA(): PWAInfo & {
       }
     } catch (error) {
       console.warn('PWA initialization failed:', error)
-      // Fallback - just set basic PWA ready state
-      setPWAInfo(prev => ({
-        ...prev,
-        isPWAReady: true,
-        showInstallPrompt: true
-      }))
+      // Fallback for extreme cases
+      setPWAInfo({
+        isStandalone: false,
+        isPWAReady: false,
+        canInstall: false,
+        showInstallPrompt: false,
+      })
     }
   }, [])
 
@@ -149,10 +157,14 @@ export function getIOSInstallInstructions(): string[] {
 }
 
 export function isIOSDevice(): boolean {
-  if (typeof window === 'undefined') return false
+  // Ensure this runs only on the client
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return false
+  }
+
   try {
-    const userAgent = (navigator && navigator.userAgent) || ''
-    return /iPad|iPhone|iPod/.test(userAgent) && !(window as any).MSStream
+    // Check userAgent and ensure MSStream is not present (for IE11)
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
   } catch (error) {
     console.warn('iOS device detection failed:', error)
     return false
