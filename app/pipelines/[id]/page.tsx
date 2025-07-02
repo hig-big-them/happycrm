@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Plus, Trash2, GripVertical, Eye, Phone, Mail, Loader2 } from 'lucide-react'
+import { Plus, Trash2, GripVertical, Eye, Phone, Mail, Loader2, ArrowUpDown, Target } from 'lucide-react'
 import { DndContext, DragEndEvent, closestCenter, DragOverlay } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, horizontalListSortingStrategy } from '@dnd-kit/sortable'
 import { useSortable } from '@dnd-kit/sortable'
@@ -32,6 +32,14 @@ import {
   moveLead 
 } from '@/lib/actions/lead-actions'
 import { Pipeline, Stage, Lead, CreateStageInput } from '@/lib/actions/pipeline-types'
+
+// Mobil komponentler ve hook'lar
+import { useMobile } from '@/hooks/use-mobile'
+import { MobileStageNavigation } from '@/components/mobile/stage-tabs'
+import { FloatingActionButton } from '@/components/mobile/floating-action-button'
+import { CompactLeadCard as MobileLeadCard } from '@/components/mobile/compact-lead-card'
+import { LeadQuickEditModal } from '@/components/mobile/lead-quick-edit'
+import { triggerHaptic } from '@/hooks/use-swipe'
 
 // Sortable Stage Component
 function SortableStage({ stage, leads, onDelete, onViewLead }: {
@@ -142,14 +150,15 @@ function SortableLead({ lead, onView }: { lead: Lead; onView: (lead: Lead) => vo
           <h4 className="font-medium text-sm line-clamp-1 flex-1">{lead.lead_name}</h4>
           <Badge 
             variant={
-              lead.priority === 'Yüksek' || lead.priority === 'urgent' || lead.priority === 'high' ? 'destructive' :
-              lead.priority === 'Düşük' || lead.priority === 'low' ? 'secondary' :
+              lead.priority === 'urgent' || lead.priority === 'high' ? 'destructive' :
+              lead.priority === 'low' ? 'secondary' :
               'default'
             }
             className="text-xs px-1.5 py-0"
           >
             {lead.priority === 'urgent' || lead.priority === 'high' ? 'Yüksek' :
              lead.priority === 'low' ? 'Düşük' : 
+             lead.priority === 'medium' ? 'Orta' : 
              lead.priority || 'Orta'}
           </Badge>
         </div>
@@ -202,6 +211,12 @@ export default function PipelineDetailPage() {
     color: '#3b82f6'
   })
   const [activeId, setActiveId] = useState<string | null>(null)
+  
+  // Mobile states
+  const isMobile = useMobile()
+  const [mobileActiveStage, setMobileActiveStage] = useState<string | null>(null)
+  const [quickEditLead, setQuickEditLead] = useState<Lead | null>(null)
+  const [isQuickEditOpen, setIsQuickEditOpen] = useState(false)
 
   useEffect(() => {
     loadPipelineData()
@@ -381,6 +396,44 @@ export default function PipelineDetailPage() {
     router.push(`/leads/${lead.id}`)
   }
 
+  // Mobile: Quick stage change handler
+  const handleQuickStageChange = async (leadId: string, stageId: string) => {
+    try {
+      await moveLead({
+        lead_id: leadId,
+        stage_id: stageId
+      })
+      loadPipelineData()
+      triggerHaptic('medium')
+      toast({
+        title: 'Başarılı',
+        description: 'Lead taşındı'
+      })
+    } catch (error) {
+      toast({
+        title: 'Hata',
+        description: 'Lead taşınırken hata oluştu',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  // Mobile: Initialize active stage
+  useEffect(() => {
+    if (isMobile && pipeline?.stages && pipeline.stages.length > 0 && !mobileActiveStage) {
+      setMobileActiveStage(pipeline.stages[0].id)
+    }
+  }, [isMobile, pipeline?.stages, mobileActiveStage])
+
+  // Mobile: Stage lead counts helper
+  const getStageLeadCounts = () => {
+    const counts: Record<string, number> = {}
+    Object.keys(stageLeads).forEach(stageId => {
+      counts[stageId] = stageLeads[stageId].length
+    })
+    return counts
+  }
+
   if (loading) {
     return <div className="flex items-center justify-center h-96">Yükleniyor...</div>
   }
@@ -390,8 +443,9 @@ export default function PipelineDetailPage() {
   }
 
   return (
-    <div className="container-fluid py-8">
-      <div className="mb-8">
+    <div className="container-fluid py-4 md:py-8 px-4">
+      {/* Desktop Header */}
+      <div className="hidden md:block mb-8">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">{pipeline.name}</h1>
@@ -420,38 +474,98 @@ export default function PipelineDetailPage() {
         </div>
       </div>
 
-      <DndContext
-        collisionDetection={closestCenter}
-        onDragStart={(event) => setActiveId(event.active.id as string)}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="flex gap-6 overflow-x-auto pb-6 px-2">
-          <SortableContext
-            items={pipeline.stages?.map(s => s.id) || []}
-            strategy={horizontalListSortingStrategy}
-          >
-            {pipeline.stages?.map((stage) => (
-              <SortableStage
-                key={stage.id}
-                stage={stage}
-                leads={stageLeads[stage.id] || []}
-                onDelete={openDeleteStageDialog}
-                onViewLead={viewLead}
-              />
-            ))}
-          </SortableContext>
-          
-          {/* Yeni Stage Ekle Kartı */}
-          <Card className="w-96 flex-shrink-0 border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-primary transition-colors cursor-pointer"
-                onClick={() => setIsCreateStageOpen(true)}>
-            <CardContent className="flex items-center justify-center h-full min-h-[200px]">
-              <div className="text-center">
-                <Plus className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Yeni Stage Ekle</p>
+      {/* Mobile Header */}
+      <div className="md:hidden mb-4">
+        <h1 className="text-2xl font-bold mb-1">{pipeline.name}</h1>
+        {pipeline.description && (
+          <p className="text-sm text-muted-foreground">{pipeline.description}</p>
+        )}
+      </div>
+
+      {/* Mobile Stage Navigation */}
+      {isMobile && pipeline.stages && (
+        <MobileStageNavigation
+          stages={pipeline.stages}
+          activeStage={mobileActiveStage}
+          onStageChange={setMobileActiveStage}
+          leadCounts={getStageLeadCounts()}
+        >
+          {(stage) => {
+            const leads = stageLeads[stage.id] || []
+            return (
+              <div className="py-2">
+                {leads.length > 0 ? (
+                  <div className="space-y-2">
+                    {leads.map((lead) => (
+                      <MobileLeadCard
+                        key={lead.id}
+                        lead={lead}
+                        onTap={() => viewLead(lead)}
+                        onQuickEdit={() => {
+                          setQuickEditLead(lead)
+                          setIsQuickEditOpen(true)
+                        }}
+                        onEdit={() => router.push(`/leads/${lead.id}/edit`)}
+                        onCall={lead.contact_phone ? () => window.location.href = `tel:${lead.contact_phone}` : undefined}
+                        onEmail={lead.contact_email ? () => window.location.href = `mailto:${lead.contact_email}` : undefined}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Target className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Bu aşamada lead bulunmuyor</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => router.push(`/leads/new?pipeline=${pipeline.id}&stage=${stage.id}`)}
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      Lead Ekle
+                    </Button>
+                  </div>
+                )}
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            )
+          }}
+        </MobileStageNavigation>
+      )}
+
+      {/* Desktop Stage View */}
+      {!isMobile && (
+        <DndContext
+          collisionDetection={closestCenter}
+          onDragStart={(event) => setActiveId(event.active.id as string)}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex gap-6 overflow-x-auto pb-6 px-2">
+            <SortableContext
+              items={pipeline.stages?.map(s => s.id) || []}
+              strategy={horizontalListSortingStrategy}
+            >
+              {pipeline.stages?.map((stage) => (
+                <SortableStage
+                  key={stage.id}
+                  stage={stage}
+                  leads={stageLeads[stage.id] || []}
+                  onDelete={openDeleteStageDialog}
+                  onViewLead={viewLead}
+                />
+              ))}
+            </SortableContext>
+            
+            {/* Yeni Stage Ekle Kartı */}
+            <Card className="w-96 flex-shrink-0 border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-primary transition-colors cursor-pointer"
+                  onClick={() => setIsCreateStageOpen(true)}>
+              <CardContent className="flex items-center justify-center h-full min-h-[200px]">
+                <div className="text-center">
+                  <Plus className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Yeni Stage Ekle</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         
         <DragOverlay>
           {activeId ? (
@@ -497,9 +611,10 @@ export default function PipelineDetailPage() {
                 return null
               })()}
             </div>
-          ) : null}
+                      ) : null}
         </DragOverlay>
       </DndContext>
+      )}
 
       {/* Create Stage Dialog */}
       <Dialog open={isCreateStageOpen} onOpenChange={setIsCreateStageOpen}>
@@ -619,6 +734,25 @@ export default function PipelineDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Mobile Quick Edit Modal */}
+      <LeadQuickEditModal
+        lead={quickEditLead}
+        isOpen={isQuickEditOpen}
+        onClose={() => {
+          setIsQuickEditOpen(false)
+          setQuickEditLead(null)
+        }}
+        stages={pipeline.stages || []}
+        onStageChange={handleQuickStageChange}
+        currentPipelineName={pipeline.name}
+      />
+
+      {/* Mobile FAB */}
+      <FloatingActionButton
+        onNewLead={() => router.push(`/leads/new?pipeline=${pipeline.id}`)}
+        onNewStage={() => setIsCreateStageOpen(true)}
+      />
     </div>
   )
 }

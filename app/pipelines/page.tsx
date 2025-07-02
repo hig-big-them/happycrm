@@ -10,6 +10,7 @@ import { Label } from "../../components/ui/label";
 import { Textarea } from "../../components/ui/textarea";
 import { Separator } from "../../components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { createClient } from "../../lib/supabase/client";
 import { 
   Loader2, 
@@ -31,9 +32,20 @@ import {
   Hash,
   User,
   Clock,
-  Tag
+  Tag,
+  ArrowUpDown
 } from "lucide-react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+
+// Mobil komponentler ve hook'lar
+import { useMobile, useMediaQuery } from "../../hooks/use-mobile";
+import { MobileStageNavigation, MobileStageSwipeNavigation } from "../../components/mobile/stage-tabs";
+import { FloatingActionButton } from "../../components/mobile/floating-action-button";
+import { CompactLeadCard as MobileLeadCard } from "../../components/mobile/compact-lead-card";
+import { LeadQuickEditModal } from "../../components/mobile/lead-quick-edit";
+import { BottomSheet } from "../../components/mobile/bottom-sheet";
+import { StageNavigationControls, DotsIndicator, SwipeableStageContainer } from "../../components/mobile/stage-navigation";
+import { useSwipe, triggerHaptic } from "../../hooks/use-swipe";
 
 
 // Veri tipleri
@@ -1007,6 +1019,12 @@ export default function PipelinesPage() {
   const [newStageColor, setNewStageColor] = React.useState("#3B82F6");
   const [newStagePosition, setNewStagePosition] = React.useState("");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  
+  // Mobile states
+  const isMobile = useMobile();
+  const [mobileActiveStage, setMobileActiveStage] = React.useState<string | null>(null);
+  const [quickEditLead, setQuickEditLead] = React.useState<Lead | null>(null);
+  const [isQuickEditOpen, setIsQuickEditOpen] = React.useState(false);
 
   async function loadPipelineData() {
     const supabase = createClient();
@@ -1525,6 +1543,60 @@ export default function PipelinesPage() {
     }
   };
 
+  // Mobile: Quick stage change handler
+  const handleQuickStageChange = async (leadId: string, stageId: string) => {
+    const originalLead = leads.find(l => l.id === leadId);
+    if (!originalLead) return;
+
+    // Optimistic update
+    setLeads(prevLeads =>
+      prevLeads.map(lead =>
+        lead.id === leadId ? { ...lead, stage_id: stageId } : lead
+      )
+    );
+    
+    // Haptic feedback
+    triggerHaptic('medium');
+    
+    // Database update
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("leads")
+      .update({ stage_id: stageId })
+      .eq("id", leadId);
+
+    if (error) {
+      // Revert on error
+      setLeads(prevLeads =>
+        prevLeads.map(lead =>
+          lead.id === leadId ? originalLead : lead
+        )
+      );
+      console.error("Stage change error:", error);
+    }
+  };
+
+  // Mobile: Initialize active stage
+  React.useEffect(() => {
+    if (isMobile && stages.length > 0 && !mobileActiveStage) {
+      const activeStages = stages
+        .filter(s => s.pipeline_id === activePipeline)
+        .sort((a, b) => a.order_position - b.order_position);
+      if (activeStages.length > 0) {
+        setMobileActiveStage(activeStages[0].id);
+      }
+    }
+  }, [isMobile, stages, activePipeline, mobileActiveStage]);
+
+  // Mobile: Stage lead counts helper
+  const getStageLeadCounts = () => {
+    const counts: Record<string, number> = {};
+    stages.forEach(stage => {
+      counts[stage.id] = filteredLeads.filter(lead => lead.stage_id === stage.id).length;
+    });
+    return counts;
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-150px)]">
@@ -1537,9 +1609,9 @@ export default function PipelinesPage() {
   const activePipelineData = pipelines.find(p => p.id === activePipeline);
 
   return (
-    <div className="container mx-auto py-8 px-4 md:px-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+    <div className="container mx-auto py-4 px-4 md:py-8 md:px-6">
+      {/* Desktop Header */}
+      <div className="hidden md:flex justify-between items-center mb-6">
         <div className="flex items-center gap-3">
           <MapPin className="h-8 w-8 text-primary" />
           <h1 className="text-4xl font-bold tracking-tight">Pipeline Yönetimi</h1>
@@ -1692,6 +1764,38 @@ export default function PipelinesPage() {
         </div>
       </div>
 
+      {/* Mobile Header */}
+      <div className="md:hidden mb-4">
+        <h1 className="text-2xl font-bold mb-2">Pipeline Yönetimi</h1>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <MapPin className="h-4 w-4" />
+          <span>{activePipelineData?.name || 'Pipeline seçin'}</span>
+        </div>
+      </div>
+
+      {/* Mobile Pipeline Selection */}
+      {pipelines.length > 0 && (
+        <div className="md:hidden mb-4">
+          <Select value={activePipeline || undefined} onValueChange={setActivePipeline}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Pipeline seçin..." />
+            </SelectTrigger>
+            <SelectContent>
+              {pipelines.filter(p => p.is_active !== false).map((pipeline) => (
+                <SelectItem key={pipeline.id} value={pipeline.id}>
+                  <div className="flex items-center justify-between w-full">
+                    <span>{pipeline.name}</span>
+                    <Badge variant="secondary" className="ml-2">
+                      {pipelineLeadCounts[pipeline.id] || 0}
+                    </Badge>
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       {/* Error Display */}
       {error && (
         <div className="mb-6 p-4 bg-red-100 text-red-700 border border-red-400 rounded-lg">
@@ -1757,135 +1861,188 @@ export default function PipelinesPage() {
           {/* Aktif Pipeline Stage'leri */}
           {activePipeline && (
             <div>
-              {/* Filters and Bulk Actions */}
-              <div className="bg-gray-50 rounded-lg p-4 mb-4 space-y-4">
-                {/* Search and Filters */}
-                <div className="flex flex-wrap gap-4 items-end">
-                  <div className="flex-1 min-w-[200px]">
-                    <Label htmlFor="search">Ara</Label>
-                    <Input
-                      id="search"
-                      placeholder="İsim, telefon, email veya şirket..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="max-w-sm"
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="priority">Öncelik</Label>
-                    <select
-                      id="priority"
-                      value={filterPriority}
-                      onChange={(e) => setFilterPriority(e.target.value)}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="">Tümü</option>
-                      <option value="high">Yüksek</option>
-                      <option value="medium">Orta</option>
-                      <option value="low">Düşük</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="startDate">Başlangıç</Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={filterDateRange.start}
-                      onChange={(e) => setFilterDateRange({ ...filterDateRange, start: e.target.value })}
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="endDate">Bitiş</Label>
-                    <Input
-                      id="endDate"
-                      type="date"
-                      value={filterDateRange.end}
-                      onChange={(e) => setFilterDateRange({ ...filterDateRange, end: e.target.value })}
-                    />
-                  </div>
-                  
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setSearchQuery("");
-                      setFilterPriority("");
-                      setFilterDateRange({ start: '', end: '' });
-                    }}
-                  >
-                    Temizle
-                  </Button>
-                </div>
-                
-                {/* Bulk Actions */}
-                {selectedLeads.size > 0 && (
-                  <div className="flex items-center gap-4 pt-2 border-t">
-                    <span className="text-sm text-muted-foreground">
-                      {selectedLeads.size} lead seçildi
-                    </span>
+              {/* Filters and Bulk Actions - Desktop Only */}
+              {!isMobile && (
+                <div className="bg-gray-50 rounded-lg p-4 mb-4 space-y-4">
+                  {/* Search and Filters */}
+                  <div className="flex flex-wrap gap-4 items-end">
+                    <div className="flex-1 min-w-[200px]">
+                      <Label htmlFor="search">Ara</Label>
+                      <Input
+                        id="search"
+                        placeholder="İsim, telefon, email veya şirket..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="max-w-sm"
+                      />
+                    </div>
                     
-                    <select
-                      onChange={(e) => {
-                        if (e.target.value) {
-                          handleBulkMove(e.target.value);
-                          e.target.value = '';
-                        }
-                      }}
-                      className="text-sm rounded-md border px-3 py-1"
-                    >
-                      <option value="">Taşı...</option>
-                      {stages
-                        .filter(s => s.pipeline_id === activePipeline)
-                        .map((stage) => (
-                          <option key={stage.id} value={stage.id}>
-                            {stage.name}
-                          </option>
-                        ))}
-                    </select>
+                    <div>
+                      <Label htmlFor="priority">Öncelik</Label>
+                      <select
+                        id="priority"
+                        value={filterPriority}
+                        onChange={(e) => setFilterPriority(e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">Tümü</option>
+                        <option value="high">Yüksek</option>
+                        <option value="medium">Orta</option>
+                        <option value="low">Düşük</option>
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="startDate">Başlangıç</Label>
+                      <Input
+                        id="startDate"
+                        type="date"
+                        value={filterDateRange.start}
+                        onChange={(e) => setFilterDateRange({ ...filterDateRange, start: e.target.value })}
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="endDate">Bitiş</Label>
+                      <Input
+                        id="endDate"
+                        type="date"
+                        value={filterDateRange.end}
+                        onChange={(e) => setFilterDateRange({ ...filterDateRange, end: e.target.value })}
+                      />
+                    </div>
                     
                     <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={handleBulkDelete}
-                    >
-                      <Trash2 className="h-4 w-4 mr-1" />
-                      Sil
-                    </Button>
-                    
-                    <Button
-                      size="sm"
                       variant="outline"
-                      onClick={() => setSelectedLeads(new Set())}
+                      onClick={() => {
+                        setSearchQuery("");
+                        setFilterPriority("");
+                        setFilterDateRange({ start: '', end: '' });
+                      }}
                     >
-                      Seçimi Temizle
+                      Temizle
                     </Button>
                   </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 mb-4">
-                <h2 className="text-xl font-semibold">{activePipelineData?.name} Aşamaları</h2>
-                <ChevronRight className="h-5 w-5 text-gray-400" />
-                <span className="text-muted-foreground">
-                  {stages.filter(s => s.pipeline_id === activePipeline).length} aşama, {filteredLeads.length} lead
-                  {searchQuery || filterPriority || filterDateRange.start || filterDateRange.end ? ' (filtrelenmiş)' : ''}
-                </span>
                 
-                {filteredLeads.length > 0 && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={handleSelectAll}
-                    className="ml-auto"
-                  >
-                    {selectedLeads.size === filteredLeads.length ? 'Hiçbirini Seçme' : 'Tümünü Seç'}
-                  </Button>
-                )}
-              </div>
+                  {/* Bulk Actions */}
+                  {selectedLeads.size > 0 && (
+                    <div className="flex items-center gap-4 pt-2 border-t">
+                      <span className="text-sm text-muted-foreground">
+                        {selectedLeads.size} lead seçildi
+                      </span>
+                      
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleBulkMove(e.target.value);
+                            e.target.value = '';
+                          }
+                        }}
+                        className="text-sm rounded-md border px-3 py-1"
+                      >
+                        <option value="">Taşı...</option>
+                        {stages
+                          .filter(s => s.pipeline_id === activePipeline)
+                          .map((stage) => (
+                            <option key={stage.id} value={stage.id}>
+                              {stage.name}
+                            </option>
+                          ))}
+                      </select>
+                      
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={handleBulkDelete}
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Sil
+                      </Button>
+                      
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setSelectedLeads(new Set())}
+                      >
+                        Seçimi Temizle
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
 
-                              <DragDropContext onDragEnd={handleDragEnd}>
+              {!isMobile && (
+                <div className="flex items-center gap-2 mb-4">
+                  <h2 className="text-xl font-semibold">{activePipelineData?.name} Aşamaları</h2>
+                  <ChevronRight className="h-5 w-5 text-gray-400" />
+                  <span className="text-muted-foreground">
+                    {stages.filter(s => s.pipeline_id === activePipeline).length} aşama, {filteredLeads.length} lead
+                    {searchQuery || filterPriority || filterDateRange.start || filterDateRange.end ? ' (filtrelenmiş)' : ''}
+                  </span>
+                  
+                  {filteredLeads.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleSelectAll}
+                      className="ml-auto"
+                    >
+                      {selectedLeads.size === filteredLeads.length ? 'Hiçbirini Seçme' : 'Tümünü Seç'}
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {/* Mobile Stage Navigation */}
+              {isMobile && (
+                <MobileStageNavigation
+                  stages={stages.filter(s => s.pipeline_id === activePipeline)}
+                  activeStage={mobileActiveStage}
+                  onStageChange={setMobileActiveStage}
+                  leadCounts={getStageLeadCounts()}
+                >
+                  {(stage) => {
+                    const stageLeads = filteredLeads.filter(lead => lead.stage_id === stage.id);
+                    return (
+                      <div className="py-2">
+                        {stageLeads.length > 0 ? (
+                          <div className="space-y-2">
+                            {stageLeads.map((lead) => (
+                              <MobileLeadCard
+                                key={lead.id}
+                                lead={lead}
+                                onTap={() => {
+                                  setSelectedLead(lead);
+                                  setIsLeadDetailOpen(true);
+                                }}
+                                onQuickEdit={() => {
+                                  setQuickEditLead(lead);
+                                  setIsQuickEditOpen(true);
+                                }}
+                                onEdit={() => {
+                                  setEditingLead(lead);
+                                  setIsLeadEditOpen(true);
+                                }}
+                                onCall={lead.contact_phone ? () => window.location.href = `tel:${lead.contact_phone}` : undefined}
+                                onEmail={lead.contact_email ? () => window.location.href = `mailto:${lead.contact_email}` : undefined}
+                              />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <Target className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                            <p className="text-sm">Bu aşamada lead bulunmuyor</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }}
+                </MobileStageNavigation>
+              )}
+
+              {/* Desktop Stage View */}
+              {!isMobile && (
+                <DragDropContext onDragEnd={handleDragEnd}>
                 <div className="overflow-x-auto pb-4">
                   <div className="flex gap-4 min-w-max">
                     {stages
@@ -1935,6 +2092,7 @@ export default function PipelinesPage() {
                   </div>
                 </div>
               </DragDropContext>
+              )}
             </div>
           )}
         </div>
@@ -1988,6 +2146,26 @@ export default function PipelinesPage() {
         stages={stages}
         defaultPipelineId={activePipeline}
         onSave={handleLeadCreate}
+      />
+
+      {/* Mobile Quick Edit Modal */}
+      <LeadQuickEditModal
+        lead={quickEditLead}
+        isOpen={isQuickEditOpen}
+        onClose={() => {
+          setIsQuickEditOpen(false);
+          setQuickEditLead(null);
+        }}
+        stages={stages.filter(s => s.pipeline_id === activePipeline)}
+        onStageChange={handleQuickStageChange}
+        currentPipelineName={activePipelineData?.name}
+      />
+
+      {/* Mobile FAB */}
+      <FloatingActionButton
+        onNewLead={activePipeline ? () => setIsLeadCreateOpen(true) : undefined}
+        onNewStage={activePipeline ? () => setIsStageModalOpen(true) : undefined}
+        onNewPipeline={() => setIsPipelineModalOpen(true)}
       />
     </div>
   );

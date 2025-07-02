@@ -8,13 +8,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/utils/supabase/service';
 import twilio from 'twilio';
 
-// Twilio client
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
-);
-
 export async function POST(request: NextRequest) {
+  // Twilio client'ı istek geldiğinde oluştur
+  const twilioClient = twilio(
+    process.env.TWILIO_ACCOUNT_SID,
+    process.env.TWILIO_AUTH_TOKEN
+  );
+
   const supabase = createClient();
 
   try {
