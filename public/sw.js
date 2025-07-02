@@ -1,35 +1,27 @@
-const CACHE_NAME = 'happy-crm-v1';
-const urlsToCache = [
+const CACHE_NAME = 'happy-crm-v2';
+const STATIC_CACHE_NAME = 'happy-crm-static-v2';
+const DYNAMIC_CACHE_NAME = 'happy-crm-dynamic-v2';
+
+// Önbelleğe alınacak temel statik varlıklar
+const STATIC_ASSETS = [
   '/',
-  '/dashboard',
-  '/leads',
-  '/pipelines',
-  '/messaging',
   '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png'
+  '/favicon/favicon.ico',
+  '/favicon/icon-192.png',
+  '/favicon/icon-512.png',
+  '/sounds/notification.mp3'
 ];
 
 // Safari-safe install event
 self.addEventListener('install', (event) => {
-  console.log('SW: Install event');
+  console.log('SW: Yüklendi');
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('SW: Cache opened');
-        // Add URLs one by one for better Safari compatibility
-        return urlsToCache.reduce((promise, url) => {
-          return promise.then(() => {
-            return cache.add(url).catch((error) => {
-              console.warn(`SW: Failed to cache ${url}:`, error);
-              // Continue with other URLs even if one fails
-            });
-          });
-        }, Promise.resolve());
-      })
-      .catch((error) => {
-        console.warn('SW: Cache setup failed:', error);
-      })
+    caches.open(STATIC_CACHE_NAME).then(cache => {
+      console.log('SW: Statik varlıklar önbelleğe alınıyor');
+      return cache.addAll(STATIC_ASSETS);
+    }).catch(err => {
+      console.error("SW: Statik önbelleğe alma başarısız oldu:", err);
+    })
   );
   // Force activation for Safari
   self.skipWaiting();
@@ -37,19 +29,19 @@ self.addEventListener('install', (event) => {
 
 // Safari-safe activate event
 self.addEventListener('activate', (event) => {
-  console.log('SW: Activate event');
+  console.log('SW: Aktive edildi');
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
+    caches.keys().then(cacheNames => {
       return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('SW: Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
+        cacheNames.filter(cacheName => {
+          // Eski versiyon cache'leri sil
+          return (cacheName.startsWith('happy-crm-') && 
+                  ![STATIC_CACHE_NAME, DYNAMIC_CACHE_NAME].includes(cacheName));
+        }).map(cacheName => {
+          console.log('SW: Eski cache siliniyor:', cacheName);
+          return caches.delete(cacheName);
         })
       );
-    }).catch((error) => {
-      console.warn('SW: Cache cleanup failed:', error);
     })
   );
   // Take control immediately for Safari
@@ -58,66 +50,63 @@ self.addEventListener('activate', (event) => {
 
 // Safari-safe fetch event
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests and problematic URLs
-  if (event.request.method !== 'GET' || 
-      event.request.url.startsWith('chrome-extension://') ||
-      event.request.url.startsWith('moz-extension://') ||
-      event.request.url.includes('_next/webpack-hmr') ||
-      event.request.url.includes('_next/static/chunks/')) {
+  const { request } = event;
+
+  // Statik varlıklar için URL'yi kontrol et
+  if (STATIC_ASSETS.some(asset => request.url.endsWith(asset))) {
+    event.respondWith(caches.match(request));
+    return;
+  }
+  
+  // Gezinme istekleri (HTML sayfaları) için NetworkFirst stratejisi
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          // Yönlendirmeleri takip et ve cache'e koyma.
+          if (response.redirected) {
+            return response;
+          }
+          
+          // Geçerli yanıtı dinamik cache'e ekle
+          const responseToCache = response.clone();
+          caches.open(DYNAMIC_CACHE_NAME)
+            .then(cache => cache.put(request, responseToCache));
+          
+          return response;
+        })
+        .catch(() => {
+          // Ağ hatası durumunda cache'den yanıt ver
+          return caches.match(request).then(response => {
+            return response || caches.match('/'); // Fallback olarak ana sayfa
+          });
+        })
+    );
     return;
   }
 
+  // Diğer tüm istekler için (API, JS, CSS vb.) Stale-While-Revalidate stratejisi
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        if (response) {
-          return response;
-        }
-        
-        // Safari-safe network fetch with timeout
-        return Promise.race([
-          fetch(event.request),
-          new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Fetch timeout')), 5000)
-          )
-        ]).then((response) => {
-          // Check if valid response
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
+    caches.match(request)
+      .then(cachedResponse => {
+        const fetchPromise = fetch(request).then(networkResponse => {
+          // Geçerli yanıtı dinamik cache'e at
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(DYNAMIC_CACHE_NAME)
+              .then(cache => cache.put(request, responseToCache));
           }
-
-          // Only cache successful GET responses for navigation and static resources
-          if (event.request.method === 'GET' && 
-              (event.request.mode === 'navigate' || event.request.destination === 'document')) {
-            const responseToCache = response.clone();
-            
-            caches.open(CACHE_NAME)
-              .then((cache) => {
-                cache.put(event.request, responseToCache);
-              })
-              .catch((error) => {
-                console.warn('SW: Cache put failed:', error);
-              });
-          }
-
-          return response;
-        });
-      })
-      .catch((error) => {
-        console.warn('SW: Fetch failed for:', event.request.url, error);
-        
-        // Return cached homepage for navigation requests
-        if (event.request.mode === 'navigate') {
-          return caches.match('/').then((response) => {
-            return response || new Response(
-              '<html><body><h1>Offline</h1><p>Please check your connection.</p></body></html>',
-              { headers: { 'Content-Type': 'text/html' } }
-            );
+          return networkResponse;
+        }).catch(() => {
+          // Ağ hatası olursa ve cache'de yoksa hata döndür
+          return new Response(JSON.stringify({ error: 'Network error' }), {
+            headers: { 'Content-Type': 'application/json' },
+            status: 500
           });
-        }
-        
-        // For other requests, just fail gracefully
-        throw error;
+        });
+
+        // Cache'de yanıt varsa onu hemen döndür, arka planda ağı kontrol et
+        return cachedResponse || fetchPromise;
       })
   );
 });
