@@ -32,7 +32,8 @@
       "Bash(npx supabase:*)",
       "Bash(git reset:*)",
       "Bash(mkdir:*)",
-      "Bash(touch:*)"
+      "Bash(touch:*)",
+      "Bash(npm uninstall:*)"
     ],
     "deny": []
   }
