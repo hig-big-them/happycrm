@@ -47,33 +47,51 @@ export async function middleware(request: NextRequest) {
 
   // Only refresh session for protected routes, and only if session exists
   try {
-    // Updated session cookie name for new project ID: kvjblasewcrztzcfrkgq
-    const sessionCookie = request.cookies.get('sb-kvjblasewcrztzcfrkgq-auth-token')
+    // Safari ve yeni proje ID için güncellenmiş session kontrolü
+    const allCookies = request.cookies.getAll()
+    const sessionCookie = allCookies.find(cookie => 
+      cookie.name.includes('auth-token') || 
+      cookie.name.includes('supabase.auth.token') ||
+      cookie.name.startsWith('sb-') && cookie.name.includes('auth')
+    )
+    
+    console.log('🍪 [MIDDLEWARE] Available cookies:', allCookies.map(c => c.name))
+    console.log('🔍 [MIDDLEWARE] Session cookie found:', sessionCookie?.name)
+    
     if (sessionCookie) {
       // Only call getUser if we have a session token
       const { data: { user }, error } = await supabase.auth.getUser()
       
+      console.log('👤 [MIDDLEWARE] Auth result:', { 
+        hasUser: !!user, 
+        userEmail: user?.email, 
+        error: error?.message 
+      })
+      
       // If auth fails and it's a protected route, redirect to login
       if (error || !user) {
-        if (pathname.startsWith('/admin') || pathname.startsWith('/transfers') || pathname === '/dashboard' || pathname.startsWith('/agencies') || pathname.startsWith('/companies') || pathname.startsWith('/leads') || pathname.startsWith('/pipelines') || pathname.startsWith('/bulk-import')) {
+        console.log('❌ [MIDDLEWARE] Auth failed, redirecting to login')
+        if (pathname.startsWith('/admin') || 
+            pathname.startsWith('/transfers') || 
+            pathname === '/dashboard' || 
+            pathname.startsWith('/agencies') || 
+            pathname.startsWith('/companies') || 
+            pathname.startsWith('/leads') || 
+            pathname.startsWith('/pipelines') || 
+            pathname.startsWith('/bulk-import') ||
+            pathname.startsWith('/messaging') ||
+            pathname.startsWith('/profile') ||
+            pathname.startsWith('/notification-settings')) {
           const redirectUrl = new URL('/login', request.url)
           redirectUrl.searchParams.set('redirectTo', pathname)
           return NextResponse.redirect(redirectUrl)
         }
       } else if (user) {
+        console.log('✅ [MIDDLEWARE] User authenticated:', user.email)
         // User authenticated, check role-based access
         const userRole = user.app_metadata?.role || user.user_metadata?.role
         
-        // DEBUG
-        console.log('🔐 [MIDDLEWARE] User role check:', {
-          pathname,
-          email: user.email,
-          app_metadata_role: user.app_metadata?.role,
-          user_metadata_role: user.user_metadata?.role,
-          finalRole: userRole
-        })
-        
-        // Admin routes check - only superuser can access admin routes (updated from admin to superuser)
+        // Admin routes check - only superuser can access admin routes
         if (pathname.startsWith('/admin')) {
           // Email tabanlı kontrol - belirli email'ler admin olarak kabul edilir
           const adminEmails = ['admin@happy-crm.com', 'onur@happysmileclinics.com', 'halilg@gmail.com', 'test@happy-crm.com'];
@@ -82,21 +100,31 @@ export async function middleware(request: NextRequest) {
             console.log('✅ [MIDDLEWARE] Admin access granted for:', user.email)
           } else if (userRole !== 'superuser') {
             console.log('❌ [MIDDLEWARE] Blocking admin access - not authorized:', user.email)
-            // Redirect non-superusers trying to access admin routes
             return NextResponse.redirect(new URL('/dashboard', request.url))
           }
         }
       }
     } else {
+      console.log('🍪 [MIDDLEWARE] No session cookie found, redirecting to login')
       // No session token, redirect protected routes to login
-      if (pathname.startsWith('/admin') || pathname.startsWith('/transfers') || pathname === '/dashboard' || pathname.startsWith('/agencies') || pathname.startsWith('/companies') || pathname.startsWith('/leads') || pathname.startsWith('/pipelines') || pathname.startsWith('/bulk-import')) {
+      if (pathname.startsWith('/admin') || 
+          pathname.startsWith('/transfers') || 
+          pathname === '/dashboard' || 
+          pathname.startsWith('/agencies') || 
+          pathname.startsWith('/companies') || 
+          pathname.startsWith('/leads') || 
+          pathname.startsWith('/pipelines') || 
+          pathname.startsWith('/bulk-import') ||
+          pathname.startsWith('/messaging') ||
+          pathname.startsWith('/profile') ||
+          pathname.startsWith('/notification-settings')) {
         const redirectUrl = new URL('/login', request.url)
         redirectUrl.searchParams.set('redirectTo', pathname)
         return NextResponse.redirect(redirectUrl)
       }
     }
   } catch (error) {
-    console.error('Middleware auth error:', error)
+    console.error('❌ [MIDDLEWARE] Auth error:', error)
     // On error, continue without auth check to avoid blocking the app
   }
 
@@ -119,6 +147,9 @@ export const config = {
     '/pipelines/:path*',
     '/bulk-import/:path*',
     '/account/:path*',
+    '/messaging/:path*',
+    '/profile/:path*',
+    '/notification-settings/:path*',
     '/api/admin/:path*',
     '/api/auth/:path*',
     '/api/agencies/:path*'

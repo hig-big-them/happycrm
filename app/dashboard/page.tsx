@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '../../lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '../../components/auth-provider'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card'
 import { Badge } from '../../components/ui/badge'
 import { Button } from '../../components/ui/button'
@@ -52,47 +53,61 @@ interface StageStats {
 export default function Dashboard() {
   const router = useRouter()
   const supabase = createClient()
-  const [user, setUser] = useState<any>(null)
+  const { user, loading: authLoading, refreshSession } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [recentLeads, setRecentLeads] = useState<RecentLead[]>([])
   const [stageStats, setStageStats] = useState<StageStats[]>([])
 
   useEffect(() => {
-    async function checkAuth() {
+    async function checkAuthAndLoadData() {
+      console.log('📊 [DASHBOARD] Auth state:', { user: !!user, authLoading })
+      
+      // Auth loading durumunda bekle
+      if (authLoading) {
+        return
+      }
+      
+      // User yoksa login'e yönlendir
+      if (!user) {
+        console.log('❌ [DASHBOARD] No user, redirecting to login')
+        router.replace('/login')
+        return
+      }
+      
+      console.log('✅ [DASHBOARD] User authenticated, loading data')
+      
       try {
         // Bypass modu kontrolü
         if (isBypassMode()) {
           const bypassUser = getBypassUser();
           if (bypassUser) {
             console.log('🔓 [DASHBOARD] Bypass mode detected, using mock data');
-            setUser(bypassUser);
             await loadMockDashboardData();
             setIsLoading(false);
             return;
           }
         }
         
-        // Normal auth kontrolü
-        const { data: { user }, error } = await supabase.auth.getUser()
-        
-        if (error || !user) {
-          console.error("Auth error:", error)
-          return router.replace('/login')
-        }
-        
-        setUser(user)
+        // Normal dashboard data yükleme
         await loadDashboardData()
+        setIsLoading(false)
+        
       } catch (error) {
-        console.error("Auth check error:", error)
-        router.replace('/login')
-      } finally {
+        console.error("❌ [DASHBOARD] Data loading error:", error)
+        // Session refresh deneme
+        try {
+          await refreshSession()
+        } catch (refreshError) {
+          console.error("❌ [DASHBOARD] Session refresh failed:", refreshError)
+          router.replace('/login')
+        }
         setIsLoading(false)
       }
     }
     
-    checkAuth()
-  }, [router, supabase])
+    checkAuthAndLoadData()
+  }, [user, authLoading, router, refreshSession])
 
   async function loadMockDashboardData() {
     // Mock data'yı state'e set et
@@ -244,15 +259,24 @@ export default function Dashboard() {
     }).format(new Date(dateString))
   }
 
-  if (isLoading) {
+  // Loading state - auth loading veya data loading
+  if (authLoading || isLoading) {
     return (
       <div className="flex items-center justify-center h-[70vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+          <p className="text-muted-foreground">
+            {authLoading ? 'Kimlik doğrulanıyor...' : 'Dashboard yükleniyor...'}
+          </p>
+        </div>
       </div>
     )
   }
   
-  if (!user) return null
+  // Auth guard
+  if (!user) {
+    return null
+  }
   
   return (
     <div className="container mx-auto py-8 px-4 md:px-6 space-y-8">
