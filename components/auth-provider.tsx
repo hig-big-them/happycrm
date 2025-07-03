@@ -36,19 +36,74 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshSession = async () => {
     try {
       console.log('🔄 [AUTH-PROVIDER] Refreshing session...')
+      
+      // Storage durumunu kontrol et
+      const storageKeys = Object.keys(localStorage).filter(key => 
+        key.includes('supabase') || key.includes('sb-')
+      )
+      console.log('💾 [AUTH-PROVIDER] Storage keys:', storageKeys)
+      
       const { data: { session }, error } = await supabaseClient.auth.getSession()
       
+      // Detaylı session bilgisi
+      console.log('📊 [AUTH-PROVIDER] Detailed session info:', {
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        userEmail: session?.user?.email,
+        accessToken: session?.access_token ? `${session.access_token.substring(0, 20)}...` : 'Missing',
+        refreshToken: session?.refresh_token ? `${session.refresh_token.substring(0, 20)}...` : 'Missing',
+        expiresAt: session?.expires_at,
+        expiresIn: session?.expires_in,
+        tokenType: session?.token_type,
+        providerToken: session?.provider_token ? 'Present' : 'Missing',
+        isSafari: isSafari,
+        userAgent: navigator.userAgent.substring(0, 100)
+      })
+      
       if (error) {
-        console.warn('⚠️ [AUTH-PROVIDER] Session refresh error:', error)
+        console.warn('⚠️ [AUTH-PROVIDER] Session refresh error:', {
+          message: error.message,
+          status: error.status,
+          details: error
+        })
+        
         // Safari için özel hata yönetimi
-        if (isSafari && error.message?.includes('storage')) {
-          console.log('🍎 [AUTH-PROVIDER] Safari storage error, clearing and retrying...')
-          // Safari storage hatası için temizlik
+        if (isSafari && (error.message?.includes('storage') || error.message?.includes('session'))) {
+          console.log('🍎 [AUTH-PROVIDER] Safari-specific error handling...')
+          
           try {
-            localStorage.removeItem('supabase.auth.token')
-            sessionStorage.removeItem('supabase.auth.token')
-          } catch {}
+            // Tüm Supabase storage'ı temizle
+            Object.keys(localStorage).forEach(key => {
+              if (key.includes('supabase') || key.includes('sb-')) {
+                localStorage.removeItem(key)
+              }
+            })
+            Object.keys(sessionStorage).forEach(key => {
+              if (key.includes('supabase') || key.includes('sb-')) {
+                sessionStorage.removeItem(key)
+              }
+            })
+            
+            console.log('🧹 [AUTH-PROVIDER] Safari storage cleared, checking if session returns...')
+            
+            // 1 saniye bekle ve tekrar dene
+            await new Promise(resolve => setTimeout(resolve, 1000))
+            const { data: { session: retrySession }, error: retryError } = await supabaseClient.auth.getSession()
+            
+            if (!retryError && retrySession) {
+              console.log('✅ [AUTH-PROVIDER] Safari retry successful!')
+              setUser(retrySession.user)
+              setUserRole('superuser')
+              return
+            } else {
+              console.log('❌ [AUTH-PROVIDER] Safari retry failed:', retryError)
+            }
+            
+          } catch (safariError) {
+            console.error('❌ [AUTH-PROVIDER] Safari error handling failed:', safariError)
+          }
         }
+        
         setUser(null)
         setUserRole(null)
         return
