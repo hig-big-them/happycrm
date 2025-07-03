@@ -59,10 +59,15 @@ export default function SessionDebugPage() {
     addDiagnostic('Cookies', cookieExists ? 'success' : 'error', 
       cookieExists ? 'Cookie desteği var' : 'Cookie desteği yok');
 
-    // 4. Supabase Client Creation
-    try {
-      const supabase = createClient();
-      addDiagnostic('Supabase Client', 'success', 'Supabase client oluşturuldu');
+          // 4. Supabase Client Creation
+      try {
+        const supabase = createClient();
+        addDiagnostic('Supabase Client', 'success', 'Supabase client oluşturuldu');
+        
+        // Safari-specific logging
+        if (isSafari) {
+          addDiagnostic('Safari Mode', 'warning', 'Safari optimizasyonları aktif');
+        }
 
       // 5. Session Check
       const { data: session, error: sessionError } = await supabase.auth.getSession();

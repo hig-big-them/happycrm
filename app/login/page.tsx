@@ -83,20 +83,35 @@ export default function LoginPage() {
     try {
       // Safari için özel temizlik
       if (isSafariBrowser) {
+        console.log('🍎 [LOGIN] Safari pre-login cleanup...')
         try {
           // Clear all auth-related storage
           const authKeys = Object.keys(localStorage).filter(key => 
-            key.includes('supabase') || key.includes('auth')
+            key.includes('supabase') || key.includes('auth') || key.includes('sb-')
           )
+          console.log('🍎 [LOGIN] Clearing keys:', authKeys)
           authKeys.forEach(key => {
             localStorage.removeItem(key)
             sessionStorage.removeItem(key)
           })
+          
+          // Clear cookies
+          document.cookie.split(";").forEach(cookie => {
+            const eqPos = cookie.indexOf("=");
+            const name = eqPos > -1 ? cookie.substr(0, eqPos).trim() : cookie.trim();
+            if (name.includes('sb_') || name.includes('supabase')) {
+              document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/`;
+            }
+          });
+          
+          console.log('🍎 [LOGIN] Safari cleanup complete')
         } catch (err) {
-          console.warn('Safari storage clear warning:', err)
+          console.warn('🍎 [LOGIN] Safari cleanup warning:', err)
         }
       }
 
+      console.log('🔐 [LOGIN] Attempting login...', { email, isSafari: isSafariBrowser })
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -106,6 +121,14 @@ export default function LoginPage() {
             captchaToken: undefined, // Safari'de captcha sorunları olabiliyor
           })
         }
+      })
+      
+      console.log('🔐 [LOGIN] Login result:', { 
+        hasData: !!data, 
+        hasSession: !!data?.session,
+        hasUser: !!data?.user,
+        userEmail: data?.user?.email,
+        error: error?.message 
       })
 
       if (error) {

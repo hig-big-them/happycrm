@@ -30,39 +30,106 @@ function getSupabaseBrowserClient() {
           storage: safariMode ? {
             getItem: (key: string) => {
               if (typeof window === 'undefined') return null
+              console.log(`🍎 [SAFARI-STORAGE] Getting key: ${key}`)
+              
               try {
-                return window.localStorage.getItem(key)
-              } catch (error) {
-                console.warn('Safari localStorage error:', error)
-                // Fallback to sessionStorage
-                try {
-                  return window.sessionStorage.getItem(key)
-                } catch {
-                  return null
+                const value = window.localStorage.getItem(key)
+                if (value) {
+                  console.log(`🍎 [SAFARI-STORAGE] localStorage success for: ${key}`)
+                  return value
                 }
+              } catch (error) {
+                console.warn(`🍎 [SAFARI-STORAGE] localStorage failed for ${key}:`, error)
               }
+              
+              // Fallback to sessionStorage
+              try {
+                const value = window.sessionStorage.getItem(key)
+                if (value) {
+                  console.log(`🍎 [SAFARI-STORAGE] sessionStorage fallback for: ${key}`)
+                  return value
+                }
+              } catch (error) {
+                console.warn(`🍎 [SAFARI-STORAGE] sessionStorage fallback failed for ${key}:`, error)
+              }
+              
+              // Cookie fallback
+              try {
+                const cookieValue = document.cookie
+                  .split('; ')
+                  .find(row => row.startsWith(`sb_${key}=`))
+                  ?.split('=')[1]
+                
+                if (cookieValue) {
+                  console.log(`🍎 [SAFARI-STORAGE] Cookie fallback for: ${key}`)
+                  return decodeURIComponent(cookieValue)
+                }
+              } catch (error) {
+                console.warn(`🍎 [SAFARI-STORAGE] Cookie fallback failed for ${key}:`, error)
+              }
+              
+              console.log(`🍎 [SAFARI-STORAGE] No value found for: ${key}`)
+              return null
             },
             setItem: (key: string, value: string) => {
               if (typeof window === 'undefined') return
+              console.log(`🍎 [SAFARI-STORAGE] Setting key: ${key}`)
+              
+              let success = false
+              
+              // Try localStorage first
               try {
                 window.localStorage.setItem(key, value)
+                console.log(`🍎 [SAFARI-STORAGE] localStorage success for: ${key}`)
+                success = true
               } catch (error) {
-                console.warn('Safari localStorage error:', error)
-                // Fallback to sessionStorage
+                console.warn(`🍎 [SAFARI-STORAGE] localStorage failed for ${key}:`, error)
+              }
+              
+              // Try sessionStorage as fallback
+              try {
+                window.sessionStorage.setItem(key, value)
+                console.log(`🍎 [SAFARI-STORAGE] sessionStorage ${success ? 'backup' : 'fallback'} for: ${key}`)
+                success = true
+              } catch (error) {
+                console.warn(`🍎 [SAFARI-STORAGE] sessionStorage failed for ${key}:`, error)
+              }
+              
+              // Cookie backup for smaller values
+              if (value.length < 2000) {
                 try {
-                  window.sessionStorage.setItem(key, value)
-                } catch {
-                  console.error('Storage completely failed')
+                  document.cookie = `sb_${key}=${encodeURIComponent(value)}; path=/; max-age=86400; samesite=lax`
+                  console.log(`🍎 [SAFARI-STORAGE] Cookie backup for: ${key}`)
+                  success = true
+                } catch (error) {
+                  console.warn(`🍎 [SAFARI-STORAGE] Cookie backup failed for ${key}:`, error)
                 }
+              }
+              
+              if (!success) {
+                console.error(`🍎 [SAFARI-STORAGE] All storage methods failed for: ${key}`)
               }
             },
             removeItem: (key: string) => {
               if (typeof window === 'undefined') return
+              console.log(`🍎 [SAFARI-STORAGE] Removing key: ${key}`)
+              
               try {
                 window.localStorage.removeItem(key)
+              } catch (error) {
+                console.warn(`🍎 [SAFARI-STORAGE] localStorage remove failed for ${key}:`, error)
+              }
+              
+              try {
                 window.sessionStorage.removeItem(key)
               } catch (error) {
-                console.warn('Safari storage remove error:', error)
+                console.warn(`🍎 [SAFARI-STORAGE] sessionStorage remove failed for ${key}:`, error)
+              }
+              
+              try {
+                document.cookie = `sb_${key}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`
+              } catch (error) {
+                console.warn(`🍎 [SAFARI-STORAGE] Cookie remove failed for ${key}:`, error)
               }
             }
           } : undefined,

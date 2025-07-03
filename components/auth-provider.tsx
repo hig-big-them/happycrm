@@ -23,6 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userRole, setUserRole] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [supabaseClient] = useState(() => createClient())
+  const [initialized, setInitialized] = useState(false)
 
   // Safari detection
   const [isSafari, setIsSafari] = useState(false)
@@ -134,7 +135,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
+    if (initialized) {
+      console.log('⚠️ [AUTH-PROVIDER] Already initialized, skipping...')
+      return
+    }
+    
     console.log('🔧 [AUTH-PROVIDER] Production mode initialization')
+    setInitialized(true)
     
     const initAuth = async () => {
       try {
@@ -196,7 +203,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn('⚠️ [AUTH-PROVIDER] Unsubscribe error:', unsubError)
       }
     }
-  }, [supabaseClient, isSafari])
+  }, [supabaseClient, isSafari, initialized])
 
   return (
     <AuthContext.Provider value={{ user, userRole, loading, refreshSession }}>
