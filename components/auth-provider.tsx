@@ -117,13 +117,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
       
       const currentUser = session?.user ?? null
-      setUser(currentUser)
       
+      // State'i güncelle
       if (currentUser) {
-        console.log('👤 [AUTH-PROVIDER] User found, setting superuser role')
+        console.log('👤 [AUTH-PROVIDER] User found, updating state')
+        setUser(currentUser)
         setUserRole('superuser') // Hardcoded for now
       } else {
-        console.log('❌ [AUTH-PROVIDER] No user found')
+        console.log('❌ [AUTH-PROVIDER] No user found, clearing state')
+        setUser(null)
         setUserRole(null)
       }
       

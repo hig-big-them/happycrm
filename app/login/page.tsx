@@ -14,12 +14,14 @@ import {
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { createClient } from '../../lib/supabase/client'
+import { useAuth } from '../../components/auth-provider'
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from 'react'
 
 export default function LoginPage() {
   const supabase = createClient()
+  const { refreshSession } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -141,12 +143,21 @@ export default function LoginPage() {
 
       // Oturum başarıyla oluşturulduysa yönlendir
       if (data.session) {
-        console.log('✅ [LOGIN] Session created, waiting for auth state update...')
+        console.log('✅ [LOGIN] Session created, refreshing auth provider...')
         
-        // AuthProvider'ın oturum güncellemesini bekle
+        // AuthProvider'ı manuel olarak yenile
+        try {
+          await refreshSession()
+          console.log('✅ [LOGIN] Auth provider refreshed')
+        } catch (refreshError) {
+          console.warn('⚠️ [LOGIN] Auth provider refresh failed:', refreshError)
+        }
+        
+        // Kısa bir bekleme sonrası yönlendir
         setTimeout(() => {
           console.log('✅ [LOGIN] Redirecting to dashboard...')
-          router.push('/dashboard')
+          // Router yerine window.location kullan
+          window.location.href = '/dashboard'
         }, 1000)
       }
     } catch (error: any) {
