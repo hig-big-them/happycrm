@@ -14,12 +14,41 @@ function AuthCallbackContent() {
   useEffect(() => {
     async function handleAuthCallback() {
       try {
+        const code = searchParams.get('code');
         const type = searchParams.get('type');
         const next = searchParams.get('next') || '/dashboard';
         const bypass = searchParams.get('bypass');
         const userId = searchParams.get('user');
 
         setStatus('Auth callback işleniyor...');
+
+        // Handle auth code exchange first
+        if (code) {
+          setStatus('Kimlik doğrulama kodu işleniyor...');
+          console.log('🔑 [AUTH-CALLBACK] Processing auth code...');
+          
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          
+          if (error) {
+            console.error('❌ [AUTH-CALLBACK] Code exchange error:', error);
+            setStatus('Kimlik doğrulama hatası: ' + error.message);
+            setTimeout(() => {
+              router.push('/login?error=auth_failed');
+            }, 3000);
+            return;
+          }
+          
+          if (data.session) {
+            console.log('✅ [AUTH-CALLBACK] Session created successfully');
+            setStatus('Giriş başarılı! Yönlendiriliyor...');
+            
+            // Wait a moment for session to be stored
+            setTimeout(() => {
+              router.push(next);
+            }, 1000);
+            return;
+          }
+        }
 
         if (type === 'recovery') {
           setStatus('Recovery token işleniyor...');
