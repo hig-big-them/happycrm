@@ -42,6 +42,11 @@ export async function middleware(request: NextRequest) {
           )
         },
       },
+      cookieOptions: {
+        path: '/',
+        sameSite: 'None',
+        secure: true,
+      },
     }
   )
 

@@ -22,6 +22,11 @@ function getSupabaseBrowserClient() {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
+        cookieOptions: {
+          path: '/',
+          sameSite: 'None',
+          secure: true,
+        },
         auth: {
           autoRefreshToken: true,
           persistSession: true,
