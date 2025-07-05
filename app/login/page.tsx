@@ -145,6 +145,19 @@ export default function LoginPage() {
       if (data.session) {
         console.log('✅ [LOGIN] Session created, refreshing auth provider...')
         
+        // Çerezlerin durumunu kontrol et
+        const allCookies = document.cookie.split(';').map(c => c.trim().split('=')[0])
+        const supabaseCookies = allCookies.filter(name => 
+          name.includes('sb-') || name.includes('supabase')
+        )
+        console.log('🍪 [LOGIN] Available cookies after login:', supabaseCookies)
+        
+        // LocalStorage durumunu kontrol et
+        const storageKeys = Object.keys(localStorage).filter(key => 
+          key.includes('supabase') || key.includes('sb-')
+        )
+        console.log('💾 [LOGIN] Storage keys after login:', storageKeys)
+        
         // AuthProvider'ı manuel olarak yenile
         try {
           await refreshSession()

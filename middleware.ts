@@ -4,6 +4,8 @@ import { NextResponse, type NextRequest } from 'next/server'
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   
+  console.log('🔍 [MIDDLEWARE] Processing request:', pathname)
+  
   // Bypass kontrolü - geliştirme amaçlı
   const bypassParam = request.nextUrl.searchParams.get('bypass');
   if (bypassParam === 'true') {
@@ -17,6 +19,7 @@ export async function middleware(request: NextRequest) {
   
   if (publicRoutes.includes(pathname) || 
       skipAuthRoutes.some(route => pathname.startsWith(route))) {
+    console.log('🔓 [MIDDLEWARE] Public route, skipping auth check:', pathname)
     return NextResponse.next()
   }
 
@@ -60,10 +63,11 @@ export async function middleware(request: NextRequest) {
       cookie.name.startsWith('sb-') && cookie.name.includes('auth')
     )
     
-    console.log('🍪 [MIDDLEWARE] Available cookies:', allCookies.map(c => c.name))
-    console.log('🔍 [MIDDLEWARE] Session cookie found:', sessionCookie?.name)
+    console.log('🍪 [MIDDLEWARE] Available cookies:', allCookies.map(c => ({ name: c.name, hasValue: !!c.value })))
+    console.log('🔍 [MIDDLEWARE] Session cookie found:', sessionCookie ? { name: sessionCookie.name, hasValue: !!sessionCookie.value } : 'None')
     
     if (sessionCookie) {
+      console.log('🔑 [MIDDLEWARE] Checking user session...')
       // Only call getUser if we have a session token
       const { data: { user }, error } = await supabase.auth.getUser()
       
@@ -75,7 +79,7 @@ export async function middleware(request: NextRequest) {
       
       // If auth fails and it's a protected route, redirect to login
       if (error || !user) {
-        console.log('❌ [MIDDLEWARE] Auth failed, redirecting to login')
+        console.log('❌ [MIDDLEWARE] Auth failed, redirecting to login from:', pathname)
         if (pathname.startsWith('/admin') || 
             pathname.startsWith('/transfers') || 
             pathname === '/dashboard' || 
@@ -89,6 +93,7 @@ export async function middleware(request: NextRequest) {
             pathname.startsWith('/notification-settings')) {
           const redirectUrl = new URL('/login', request.url)
           redirectUrl.searchParams.set('redirectTo', pathname)
+          console.log('🔄 [MIDDLEWARE] Redirecting to:', redirectUrl.toString())
           return NextResponse.redirect(redirectUrl)
         }
       } else if (user) {
@@ -108,9 +113,11 @@ export async function middleware(request: NextRequest) {
             return NextResponse.redirect(new URL('/dashboard', request.url))
           }
         }
+        
+        console.log('✅ [MIDDLEWARE] Access granted to:', pathname)
       }
     } else {
-      console.log('🍪 [MIDDLEWARE] No session cookie found, redirecting to login')
+      console.log('🍪 [MIDDLEWARE] No session cookie found, redirecting to login from:', pathname)
       // No session token, redirect protected routes to login
       if (pathname.startsWith('/admin') || 
           pathname.startsWith('/transfers') || 
@@ -125,6 +132,7 @@ export async function middleware(request: NextRequest) {
           pathname.startsWith('/notification-settings')) {
         const redirectUrl = new URL('/login', request.url)
         redirectUrl.searchParams.set('redirectTo', pathname)
+        console.log('🔄 [MIDDLEWARE] Redirecting to:', redirectUrl.toString())
         return NextResponse.redirect(redirectUrl)
       }
     }
@@ -133,6 +141,7 @@ export async function middleware(request: NextRequest) {
     // On error, continue without auth check to avoid blocking the app
   }
 
+  console.log('✅ [MIDDLEWARE] Request processed successfully for:', pathname)
   return supabaseResponse
 }
 
