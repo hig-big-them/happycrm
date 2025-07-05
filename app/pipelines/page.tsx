@@ -1641,6 +1641,11 @@ export default function PipelinesPage() {
     return counts;
   };
 
+  // Mobile: Handle new lead click
+  const handleNewLeadClick = () => {
+    setIsLeadCreateOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[calc(100vh-150px)]">
