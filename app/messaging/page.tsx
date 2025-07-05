@@ -17,6 +17,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { 
   MessageSquare, 
   Phone, 
@@ -87,6 +88,7 @@ export default function MessagingPage() {
   const [messageText, setMessageText] = useState('');
   const [showLeadDetail, setShowLeadDetail] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [selectedThreadIds, setSelectedThreadIds] = useState<string[]>([]);
 
   // Pipeline ve stage verileri - şu an boş
   const pipelines: any[] = [];
@@ -293,6 +295,34 @@ export default function MessagingPage() {
                   <Star className="h-4 w-4" />
                   Yıldızlı
                 </Button>
+                {selectedThreadIds.length > 0 && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        selectedThreadIds.forEach(id => markAsRead(id));
+                        setSelectedThreadIds([]);
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <Check className="h-4 w-4" />
+                      Okundu
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        selectedThreadIds.forEach(id => toggleStar(id));
+                        setSelectedThreadIds([]);
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <Star className="h-4 w-4" />
+                      Yıldız Ekle
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </CardHeader>
@@ -310,44 +340,61 @@ export default function MessagingPage() {
                 threads.map((thread) => (
                   <div
                     key={thread.lead_id}
-                    onClick={() => setSelectedLeadId(thread.lead_id)}
-                    className={`p-4 border-b cursor-pointer hover:bg-accent transition-colors ${
+                    className={`border-b hover:bg-accent transition-colors ${
                       selectedLeadId === thread.lead_id ? 'bg-accent' : ''
                     }`}
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-medium truncate">
-                            {thread.lead.lead_name}
-                          </h4>
-                          {thread.is_starred && (
-                            <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
-                          )}
+                    <div className="flex items-start p-4 gap-3">
+                      <Checkbox
+                        checked={selectedThreadIds.includes(thread.lead_id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedThreadIds([...selectedThreadIds, thread.lead_id]);
+                          } else {
+                            setSelectedThreadIds(selectedThreadIds.filter(id => id !== thread.lead_id));
+                          }
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <div
+                        className="flex-1 cursor-pointer"
+                        onClick={() => setSelectedLeadId(thread.lead_id)}
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium truncate">
+                                {thread.lead.lead_name}
+                              </h4>
+                              {thread.is_starred && (
+                                <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
+                              )}
+                            </div>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {thread.lead.contact_phone || thread.lead.contact_email || 'İletişim bilgisi yok'}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {thread.unread_count > 0 && (
+                              <Badge variant="destructive">
+                                {thread.unread_count}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {thread.lead.contact_phone || thread.lead.contact_email || 'İletişim bilgisi yok'}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {thread.unread_count > 0 && (
-                          <Badge variant="destructive">
-                            {thread.unread_count}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 text-xs">
-                        <div className="p-1 rounded bg-green-500 text-white">
-                          <MessageSquare className="h-3 w-3" />
+                        
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-xs">
+                            <div className="p-1 rounded bg-green-500 text-white">
+                              <MessageSquare className="h-3 w-3" />
+                            </div>
+                            <span className="text-muted-foreground">2 dakika önce</span>
+                          </div>
+                          <p className="text-sm text-muted-foreground truncate">
+                            Teşekkürler! Yarın saat 14:00 uygun mu?
+                          </p>
                         </div>
-                        <span className="text-muted-foreground">2 dakika önce</span>
                       </div>
-                      <p className="text-sm text-muted-foreground truncate">
-                        Teşekkürler! Yarın saat 14:00 uygun mu?
-                      </p>
                     </div>
                   </div>
                 ))
@@ -384,6 +431,7 @@ export default function MessagingPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => toggleStar(selectedLeadId)}
+                      title="Yıldız Ekle/Kaldır"
                     >
                       {selectedThread.is_starred ? (
                         <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
@@ -391,6 +439,16 @@ export default function MessagingPage() {
                         <StarOff className="h-4 w-4" />
                       )}
                     </Button>
+                    {selectedThread.unread_count > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => markAsRead(selectedLeadId)}
+                        title="Okundu olarak işaretle"
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                    )}
                     <Button
                       variant="outline"
                       size="sm"
@@ -441,20 +499,26 @@ export default function MessagingPage() {
                 
                 {/* Mesaj Gönderme */}
                 <div className="border-t p-4">
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-end">
                     <Textarea
                       placeholder="Mesajınızı yazın..." 
-                      className="flex-1 min-h-[60px] resize-none"
+                      className="flex-1 min-h-[60px] max-h-[200px] resize-none overflow-y-auto"
                       value={messageText}
-                      onChange={(e) => setMessageText(e.target.value)}
+                      onChange={(e) => {
+                        setMessageText(e.target.value);
+                        // Auto-resize textarea
+                        e.target.style.height = 'auto';
+                        e.target.style.height = Math.min(e.target.scrollHeight, 200) + 'px';
+                      }}
                       onKeyDown={(e) => {
                         // Enter tuşu sadece yeni satır ekler, göndermez
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.stopPropagation();
                         }
                       }}
+                      style={{ height: 'auto' }}
                     />
-                    <Button onClick={sendMessage}>
+                    <Button onClick={sendMessage} className="mb-[2px]">
                       <Send className="h-4 w-4" />
                     </Button>
                   </div>
@@ -462,16 +526,6 @@ export default function MessagingPage() {
                     <p className="text-xs text-muted-foreground">
                       {activeChannel === 'all' ? 'WhatsApp' : activeChannel.toUpperCase()} üzerinden gönderilecek
                     </p>
-                    {selectedThread.unread_count > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => markAsRead(selectedLeadId)}
-                      >
-                        <Check className="h-4 w-4 mr-2" />
-                        Okundu olarak işaretle
-                      </Button>
-                    )}
                   </div>
                 </div>
               </CardContent>
