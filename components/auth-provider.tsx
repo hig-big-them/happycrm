@@ -160,7 +160,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data } = supabaseClient.auth.onAuthStateChange(async (event, session) => {
         try {
-          console.log('🔄 [AUTH-PROVIDER] Auth event:', event)
+          console.log('🔄 [AUTH-PROVIDER] Auth event:', event, { hasSession: !!session, userEmail: session?.user?.email })
+          
+          // Handle different auth events
+          if (event === 'SIGNED_IN') {
+            console.log('✅ [AUTH-PROVIDER] User signed in')
+            const currentUser = session?.user ?? null
+            setUser(currentUser)
+            
+            if (currentUser) {
+              console.log('👤 [AUTH-PROVIDER] Setting superuser role for signed in user')
+              setUserRole('superuser')
+            }
+            setLoading(false)
+            return
+          }
+          
+          if (event === 'SIGNED_OUT') {
+            console.log('❌ [AUTH-PROVIDER] User signed out')
+            setUser(null)
+            setUserRole(null)
+            setLoading(false)
+            return
+          }
           
           // Safari için özel event handling
           if (event === 'TOKEN_REFRESHED' && isSafari) {
@@ -169,8 +191,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return
           }
           
-          if (event === 'TOKEN_REFRESHED') return
+          if (event === 'TOKEN_REFRESHED') {
+            console.log('🔄 [AUTH-PROVIDER] Token refreshed')
+            return
+          }
           
+          // Default handling for other events
           const currentUser = session?.user ?? null
           setUser(currentUser)
           

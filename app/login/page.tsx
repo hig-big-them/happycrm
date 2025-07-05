@@ -141,13 +141,13 @@ export default function LoginPage() {
 
       // Oturum başarıyla oluşturulduysa yönlendir
       if (data.session) {
-        // Safari için özel yönlendirme
-        if (isSafariBrowser) {
-          // Force reload to ensure session is properly set
-          window.location.replace(`/dashboard?t=${Date.now()}`)
-        } else {
-          window.location.href = `/dashboard?t=${Date.now()}`
-        }
+        console.log('✅ [LOGIN] Session created, waiting for auth state update...')
+        
+        // AuthProvider'ın oturum güncellemesini bekle
+        setTimeout(() => {
+          console.log('✅ [LOGIN] Redirecting to dashboard...')
+          router.push('/dashboard')
+        }, 1000)
       }
     } catch (error: any) {
       console.error('Login hatası:', error)
