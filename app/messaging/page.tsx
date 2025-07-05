@@ -6,6 +6,7 @@
 
 "use client";
 
+import * as React from 'react';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,6 +15,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   MessageSquare, 
   Phone, 
@@ -31,7 +34,12 @@ import {
   Star,
   StarOff,
   Circle,
-  CircleDot
+  CircleDot,
+  ChevronRight,
+  Check,
+  Calendar,
+  Target,
+  Edit
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useInfiniteMessages } from '@/lib/providers/query-provider';
@@ -52,6 +60,10 @@ interface Lead {
   contact_email?: string;
   last_message_at?: string;
   unread_count?: number;
+  pipeline_id?: string;
+  stage_id?: string;
+  event_date?: string;
+  event_time?: string;
 }
 
 interface MessageThread {
@@ -61,6 +73,7 @@ interface MessageThread {
   unread_count: number;
   starred_count?: number;
   total_messages: number;
+  is_starred?: boolean;
 }
 
 export default function MessagingPage() {
@@ -71,6 +84,13 @@ export default function MessagingPage() {
   const [showStarredOnly, setShowStarredOnly] = useState(false);
   const [threads, setThreads] = useState<MessageThread[]>([]);
   const [loading, setLoading] = useState(true);
+  const [messageText, setMessageText] = useState('');
+  const [showLeadDetail, setShowLeadDetail] = useState(false);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+
+  // Pipeline ve stage verileri - şu an boş
+  const pipelines: any[] = [];
+  const stages: any[] = [];
   
   const supabase = createClient();
   const { threads: storeThreads } = useMessagingStore();
@@ -94,7 +114,8 @@ export default function MessagingPage() {
           last_message: null,
           unread_count: index === 0 ? 2 : index === 1 ? 1 : 0,
           starred_count: index === 0 ? 1 : 0,
-          total_messages: 3
+          total_messages: 3,
+          is_starred: index === 0
         }));
         
         setThreads(formattedThreads);
@@ -120,7 +141,8 @@ export default function MessagingPage() {
         last_message: null,
         unread_count: index === 0 ? 2 : index === 1 ? 1 : 0, // İlk ikisinde unread var
         starred_count: index === 0 ? 1 : 0, // İlkisinde yıldız var
-        total_messages: 3
+        total_messages: 3,
+        is_starred: index === 0
       })) || [];
 
       setThreads(formattedThreads);
@@ -167,6 +189,44 @@ export default function MessagingPage() {
   };
 
   const selectedThread = threads.find(t => t.lead_id === selectedLeadId);
+
+  // Mesajı okundu olarak işaretle
+  const markAsRead = (leadId: string) => {
+    setThreads(prev => prev.map(thread => 
+      thread.lead_id === leadId 
+        ? { ...thread, unread_count: 0 }
+        : thread
+    ));
+  };
+
+  // Yıldız durumunu değiştir
+  const toggleStar = (leadId: string) => {
+    setThreads(prev => prev.map(thread => 
+      thread.lead_id === leadId 
+        ? { ...thread, is_starred: !thread.is_starred, starred_count: thread.is_starred ? 0 : 1 }
+        : thread
+    ));
+  };
+
+  // Mesaj gönder
+  const sendMessage = async () => {
+    if (!messageText.trim() || !selectedLeadId) return;
+    
+    // Mesaj gönderme lojiği - Şu an mock
+    toast({
+      title: "Mesaj Gönderildi",
+      description: `${activeChannel === 'all' ? 'WhatsApp' : activeChannel} üzerinden mesaj gönderildi`,
+    });
+    
+    setMessageText('');
+  };
+
+  // Lead seçildiğinde okundu olarak işaretle
+  React.useEffect(() => {
+    if (selectedLeadId) {
+      markAsRead(selectedLeadId);
+    }
+  }, [selectedLeadId]);
 
   return (
     <div className="container mx-auto p-6 max-w-7xl">
@@ -261,7 +321,7 @@ export default function MessagingPage() {
                           <h4 className="font-medium truncate">
                             {thread.lead.lead_name}
                           </h4>
-                          {thread.starred_count > 0 && (
+                          {thread.is_starred && (
                             <Star className="h-3 w-3 text-yellow-500 fill-yellow-500" />
                           )}
                         </div>
@@ -323,7 +383,21 @@ export default function MessagingPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => window.open(`/leads/${selectedLeadId}`, '_blank')}
+                      onClick={() => toggleStar(selectedLeadId)}
+                    >
+                      {selectedThread.is_starred ? (
+                        <Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />
+                      ) : (
+                        <StarOff className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedLead(selectedThread.lead);
+                        setShowLeadDetail(true);
+                      }}
                     >
                       <User className="h-4 w-4 mr-2" />
                       Müşteri Detayı
@@ -368,27 +442,36 @@ export default function MessagingPage() {
                 {/* Mesaj Gönderme */}
                 <div className="border-t p-4">
                   <div className="flex gap-2">
-                    <Input 
+                    <Textarea
                       placeholder="Mesajınızı yazın..." 
-                      className="flex-1"
+                      className="flex-1 min-h-[60px] resize-none"
+                      value={messageText}
+                      onChange={(e) => setMessageText(e.target.value)}
+                      onKeyDown={(e) => {
+                        // Enter tuşu sadece yeni satır ekler, göndermez
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.stopPropagation();
+                        }
+                      }}
                     />
-                    <Button>
+                    <Button onClick={sendMessage}>
                       <Send className="h-4 w-4" />
                     </Button>
                   </div>
-                  <div className="flex gap-2 mt-2">
-                    <Button variant="outline" size="sm">
-                      <Phone className="h-4 w-4 mr-2" />
-                      SMS
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      WhatsApp
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Mail className="h-4 w-4 mr-2" />
-                      Email
-                    </Button>
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-xs text-muted-foreground">
+                      {activeChannel === 'all' ? 'WhatsApp' : activeChannel.toUpperCase()} üzerinden gönderilecek
+                    </p>
+                    {selectedThread.unread_count > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => markAsRead(selectedLeadId)}
+                      >
+                        <Check className="h-4 w-4 mr-2" />
+                        Okundu olarak işaretle
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -410,6 +493,154 @@ export default function MessagingPage() {
           <MessageHistoryTracker leadId={selectedLeadId} />
         </div>
       )} */}
+
+      {/* Lead Detay Modalı */}
+      <LeadDetailModal
+        lead={selectedLead}
+        isOpen={showLeadDetail}
+        onClose={() => setShowLeadDetail(false)}
+        pipelines={pipelines}
+        stages={stages}
+        onEdit={() => {
+          // Düzenleme işlevi - şu an boş
+          toast({
+            title: "Düzenleme",
+            description: "Düzenleme özelliği henüz aktif değil",
+          });
+        }}
+      />
     </div>
+  );
+}
+
+// Lead Detay Modalı Bileşeni
+function LeadDetailModal({ 
+  lead, 
+  isOpen, 
+  onClose,
+  pipelines,
+  stages,
+  onEdit
+}: { 
+  lead: Lead | null; 
+  isOpen: boolean; 
+  onClose: () => void;
+  pipelines: any[];
+  stages: any[];
+  onEdit: (lead: Lead) => void;
+}) {
+  if (!lead) return null;
+
+  const pipeline = pipelines.find((p: any) => p.id === lead.pipeline_id);
+  const stage = stages.find((s: any) => s.id === lead.stage_id);
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-xl">{lead.lead_name}</DialogTitle>
+          <DialogDescription>Müşteri Detayları</DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4 py-4">
+          {/* Müşteri Bilgileri */}
+          <div>
+            <h3 className="text-sm font-semibold text-muted-foreground mb-2">MÜŞTERİ BİLGİLERİ</h3>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">{lead.lead_name}</span>
+              </div>
+              
+              {lead.contact_phone && (
+                <div className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <a 
+                    href={`tel:${lead.contact_phone}`}
+                    className="text-primary hover:underline"
+                  >
+                    {lead.contact_phone}
+                  </a>
+                </div>
+              )}
+              
+              {lead.contact_email && (
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <a 
+                    href={`mailto:${lead.contact_email}`}
+                    className="text-primary hover:underline"
+                  >
+                    {lead.contact_email}
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Pipeline - Stage */}
+          <div>
+            <h3 className="text-sm font-semibold text-muted-foreground mb-2">PIPELINE - STAGE</h3>
+            <div className="flex items-center gap-2">
+              <Target className="h-4 w-4 text-muted-foreground" />
+              <span>
+                {pipeline?.name || 'Belirtilmemiş'} 
+                {stage && (
+                  <>
+                    <ChevronRight className="h-4 w-4 inline mx-1 text-muted-foreground" />
+                    <Badge 
+                      style={{ backgroundColor: stage.color || '#3B82F6' }}
+                      className="text-white"
+                    >
+                      {stage.name}
+                    </Badge>
+                  </>
+                )}
+              </span>
+            </div>
+          </div>
+
+          {/* Event Date - Event Time */}
+          {(lead.event_date || lead.event_time) && (
+            <>
+              <Separator />
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground mb-2">EVENT TARİH - SAAT</h3>
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span>
+                    {lead.event_date || 'Tarih belirtilmemiş'}
+                    {lead.event_time && (
+                      <>
+                        <span className="mx-2 text-muted-foreground">•</span>
+                        <Clock className="h-4 w-4 inline mr-1 text-muted-foreground" />
+                        {lead.event_time}
+                      </>
+                    )}
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Kapat
+          </Button>
+          <Button 
+            onClick={() => {
+              onClose();
+              onEdit(lead);
+            }}
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Düzenle
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
