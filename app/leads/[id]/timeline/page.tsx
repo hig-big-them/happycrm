@@ -125,6 +125,7 @@ export default function LeadTimelinePage() {
   const [messageType, setMessageType] = useState<'chat' | 'email' | 'note' | 'task'>('chat');
   const [sendingMessage, setSendingMessage] = useState(false);
   const timelineRef = React.useRef<HTMLDivElement>(null);
+  const [newActivityIds, setNewActivityIds] = useState<Set<string>>(new Set());
   
   const supabase = createClient();
 
@@ -391,6 +392,18 @@ export default function LeadTimelinePage() {
       // Yeni aktiviteyi timeline'ın başına ekle
       setActivities(prev => [newActivity, ...prev]);
       
+      // Yeni aktivite ID'sini işaretle
+      setNewActivityIds(prev => new Set(prev).add(data.id));
+      
+      // 3 saniye sonra animasyonu kaldır
+      setTimeout(() => {
+        setNewActivityIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(data.id);
+          return newSet;
+        });
+      }, 3000);
+      
       // Scroll'ı en üste kaydır
       setTimeout(() => {
         if (timelineRef.current) {
@@ -520,13 +533,12 @@ export default function LeadTimelinePage() {
                       const Icon = getActivityIcon(activity.type);
                       const colorClass = getActivityColor(activity.type);
                       const isMessage = activity.type === 'message_sent' || activity.type === 'message_received';
-                      const isNewActivity = index === 0 && activity.id && activity.id.includes && activity.created_at && 
-                        new Date(activity.created_at).getTime() > Date.now() - 5000; // Son 5 saniyede eklenen
+                      const isNewActivity = newActivityIds.has(activity.id);
                       
                       return (
                         <div 
                           key={activity.id} 
-                          className={`flex gap-3 transition-all duration-500 ${isNewActivity ? 'animate-pulse bg-blue-50 dark:bg-blue-900/10 rounded-lg p-2 -m-2' : ''}`}
+                          className={`flex gap-3 transition-all duration-1000 ${isNewActivity ? 'bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-2 -m-2 shadow-sm' : ''}`}
                         >
                           {/* Timeline line */}
                           {index < activities.length - 1 && (
