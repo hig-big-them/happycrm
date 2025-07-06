@@ -33,7 +33,8 @@ import {
   Eye,
   ChevronLeft,
   ChevronRight,
-  MoreHorizontal
+  MoreHorizontal,
+  Activity
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -219,6 +220,16 @@ function LeadDetailModal({
           >
             <Edit className="h-4 w-4 mr-2" />
             Düzenle
+          </Button>
+          <Button 
+            variant="default"
+            onClick={() => {
+              onClose();
+              window.location.href = `/leads/${lead.id}/timeline`;
+            }}
+          >
+            <Activity className="h-4 w-4 mr-2" />
+            Zaman Çizelgesi
           </Button>
         </DialogFooter>
       </DialogContent>

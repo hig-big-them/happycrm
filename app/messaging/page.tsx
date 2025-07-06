@@ -40,7 +40,8 @@ import {
   Check,
   Calendar,
   Target,
-  Edit
+  Edit,
+  Activity
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useInfiniteMessages } from '@/lib/providers/query-provider';
@@ -692,6 +693,16 @@ function LeadDetailModal({
           >
             <Edit className="h-4 w-4 mr-2" />
             Düzenle
+          </Button>
+          <Button 
+            variant="default"
+            onClick={() => {
+              onClose();
+              window.location.href = `/leads/${lead.id}/timeline`;
+            }}
+          >
+            <Activity className="h-4 w-4 mr-2" />
+            Zaman Çizelgesi
           </Button>
         </DialogFooter>
       </DialogContent>
