@@ -187,77 +187,33 @@ export default function LeadTimelinePage() {
     try {
       setLoading(true);
       
-      // Mock timeline data for now
-      const mockActivities: TimelineActivity[] = [
-        {
-          id: '1',
-          type: 'lead_created',
-          title: 'Müşteri oluşturuldu',
-          user: { name: 'Sistem' },
-          created_at: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: '2',
-          type: 'message_sent',
-          title: 'WhatsApp mesajı gönderildi',
-          content: 'Merhaba, ürünlerimiz hakkında bilgi almak ister misiniz?',
-          user: { name: 'Ahmet Yılmaz' },
-          channel: 'whatsapp',
-          created_at: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: '3',
-          type: 'message_received',
-          title: 'WhatsApp mesajı alındı',
-          content: 'Evet, fiyat listesi gönderebilir misiniz?',
-          channel: 'whatsapp',
-          created_at: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000 + 30 * 60 * 1000).toISOString()
-        },
-        {
-          id: '4',
-          type: 'stage_changed',
-          title: 'Aşama değişti',
-          description: 'New → Qualified',
-          user: { name: 'Ahmet Yılmaz' },
-          created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: '5',
-          type: 'note_added',
-          title: 'Not eklendi',
-          content: 'Müşteri fiyat konusunda hassas. İndirim yapılabilir.',
-          user: { name: 'Ahmet Yılmaz' },
-          created_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: '6',
-          type: 'task_created',
-          title: 'Görev oluşturuldu',
-          description: 'Fiyat teklifi hazırla',
-          user: { name: 'Ahmet Yılmaz' },
-          created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: '7',
-          type: 'email_sent',
-          title: 'E-posta gönderildi',
-          content: 'Sayın müşterimiz, talebiniz doğrultusunda fiyat teklifimizi ekte bulabilirsiniz.',
-          user: { name: 'Ahmet Yılmaz' },
-          channel: 'email',
-          created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          id: '8',
-          type: 'call_made',
-          title: 'Arama yapıldı',
-          description: 'Müşteri ile 15 dakika görüşüldü. Teklif hakkında olumlu dönüş aldık.',
-          user: { name: 'Ahmet Yılmaz' },
-          channel: 'call',
-          created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
-        }
-      ];
+      // Load real messages from the database
+      const { data: messages, error: messagesError } = await supabase
+        .from('messages')
+        .select(`
+          *,
+          sender:user_profiles!messages_sender_id_fkey(full_name, email)
+        `)
+        .eq('lead_id', leadId)
+        .order('created_at', { ascending: false });
+
+      if (messagesError) throw messagesError;
+
+      // Convert messages to timeline activities
+      const messageActivities: TimelineActivity[] = messages?.map(msg => ({
+        id: msg.id,
+        type: msg.direction === 'outbound' ? 'message_sent' : 'message_received',
+        title: msg.direction === 'outbound' ? 'Mesaj gönderildi' : 'Mesaj alındı',
+        content: msg.content,
+        user: msg.sender ? {
+          name: msg.sender.full_name || msg.sender.email,
+          email: msg.sender.email
+        } : undefined,
+        channel: msg.channel as any,
+        created_at: msg.created_at
+      })) || [];
       
-      setActivities(mockActivities);
+      setActivities(messageActivities);
     } catch (error) {
       console.error('Error loading timeline:', error);
       toast({
@@ -322,20 +278,44 @@ export default function LeadTimelinePage() {
   };
 
   const sendMessage = async () => {
-    if (!messageText.trim()) return;
+    if (!messageText.trim() || !leadId) return;
     
     setSendingMessage(true);
     try {
-      // Here we would send the actual message
+      // Insert message into database
+      const { data, error } = await supabase
+        .from('messages')
+        .insert({
+          lead_id: leadId,
+          content: messageText,
+          channel: messageType === 'chat' ? 'whatsapp' : messageType,
+          direction: 'outbound',
+          status: 'sent',
+          recipient_phone: lead?.contact_phone || null,
+          recipient_email: lead?.contact_email || null,
+          metadata: {
+            source: 'timeline',
+            type: messageType
+          }
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
       toast({
-        title: "Mesaj gönderildi",
-        description: `${messageType === 'chat' ? 'WhatsApp' : messageType} mesajı başarıyla gönderildi`,
+        title: "Başarılı",
+        description: `${messageType === 'chat' ? 'WhatsApp mesajı' : 
+          messageType === 'email' ? 'E-posta' :
+          messageType === 'note' ? 'Not' :
+          'Görev'} başarıyla kaydedildi`,
       });
       
       setMessageText('');
       // Reload activities to show the new message
       await loadTimelineActivities();
     } catch (error) {
+      console.error('Error sending message:', error);
       toast({
         title: "Hata",
         description: "Mesaj gönderilirken hata oluştu",
@@ -348,11 +328,11 @@ export default function LeadTimelinePage() {
 
   if (!lead) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="flex items-center justify-center h-96">
+      <div className="container mx-auto p-4">
+        <div className="flex items-center justify-center h-40">
           <div className="text-center">
-            <Activity className="h-12 w-12 mx-auto mb-4 text-gray-400 animate-spin" />
-            <p className="text-gray-500">Yükleniyor...</p>
+            <Activity className="h-8 w-8 mx-auto mb-2 text-gray-400 animate-spin" />
+            <p className="text-sm text-gray-500">Yükleniyor...</p>
           </div>
         </div>
       </div>
@@ -360,59 +340,60 @@ export default function LeadTimelinePage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl">
+    <div className="container mx-auto p-4 max-w-7xl">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-4">
         <Button
           variant="ghost"
+          size="sm"
           onClick={() => router.back()}
-          className="mb-4"
+          className="mb-2"
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="h-3 w-3 mr-1" />
           Geri
         </Button>
         
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold mb-2">{lead.lead_name}</h1>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <h1 className="text-2xl font-bold mb-1">{lead.lead_name}</h1>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
               {lead.company && (
                 <div className="flex items-center gap-1">
-                  <Building className="h-4 w-4" />
+                  <Building className="h-3 w-3" />
                   {lead.company.company_name}
                 </div>
               )}
               {lead.contact_phone && (
                 <div className="flex items-center gap-1">
-                  <Phone className="h-4 w-4" />
+                  <Phone className="h-3 w-3" />
                   {lead.contact_phone}
                 </div>
               )}
               {lead.contact_email && (
                 <div className="flex items-center gap-1">
-                  <Mail className="h-4 w-4" />
+                  <Mail className="h-3 w-3" />
                   {lead.contact_email}
                 </div>
               )}
             </div>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             {lead.stage && (
               <Badge 
                 style={{ backgroundColor: lead.stage.color }}
-                className="text-white"
+                className="text-white text-xs"
               >
                 {lead.stage.name}
               </Badge>
             )}
             {lead.priority && (
-              <Badge variant={lead.priority === 'high' ? 'destructive' : 'secondary'}>
-                {lead.priority === 'high' ? 'Yüksek' : lead.priority === 'medium' ? 'Orta' : 'Düşük'} Öncelik
+              <Badge variant={lead.priority === 'high' ? 'destructive' : 'secondary'} className="text-xs">
+                {lead.priority === 'high' ? 'Yüksek' : lead.priority === 'medium' ? 'Orta' : 'Düşük'}
               </Badge>
             )}
             {lead.lead_value && (
-              <div className="text-lg font-semibold">
+              <div className="text-sm font-semibold">
                 ₺{lead.lead_value.toLocaleString('tr-TR')}
               </div>
             )}
@@ -420,52 +401,52 @@ export default function LeadTimelinePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Timeline */}
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Aktivite Zaman Çizelgesi</CardTitle>
-              <CardDescription>
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        {/* Timeline - Expanded */}
+        <div className="lg:col-span-3">
+          <Card className="h-full">
+            <CardHeader className="py-3">
+              <CardTitle className="text-base">Aktivite Zaman Çizelgesi</CardTitle>
+              <CardDescription className="text-xs">
                 Tüm etkileşimler ve güncellemeler
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[600px] pr-4">
+            <CardContent className="p-3">
+              <ScrollArea className="h-[calc(100vh-280px)] pr-2">
                 {loading ? (
-                  <div className="flex items-center justify-center h-40">
-                    <Activity className="h-8 w-8 animate-spin text-gray-400" />
+                  <div className="flex items-center justify-center h-20">
+                    <Activity className="h-6 w-6 animate-spin text-gray-400" />
                   </div>
                 ) : activities.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-8">
-                    Henüz aktivite bulunmuyor
+                  <div className="text-center text-muted-foreground py-4">
+                    <div className="text-xs">Henüz aktivite bulunmuyor</div>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-2">
                     {activities.map((activity, index) => {
                       const Icon = getActivityIcon(activity.type);
                       const colorClass = getActivityColor(activity.type);
                       const isMessage = activity.type === 'message_sent' || activity.type === 'message_received';
                       
                       return (
-                        <div key={activity.id} className="flex gap-4">
+                        <div key={activity.id} className="flex gap-3">
                           {/* Timeline line */}
                           {index < activities.length - 1 && (
-                            <div className="absolute ml-5 mt-10 h-full w-0.5 bg-gray-200" />
+                            <div className="absolute ml-4 mt-8 h-full w-px bg-gray-200" />
                           )}
                           
                           {/* Icon */}
-                          <div className={`relative z-10 flex h-10 w-10 items-center justify-center rounded-full ${colorClass}`}>
-                            <Icon className="h-5 w-5" />
+                          <div className={`relative z-10 flex h-8 w-8 items-center justify-center rounded-full ${colorClass}`}>
+                            <Icon className="h-4 w-4" />
                           </div>
                           
                           {/* Content */}
-                          <div className="flex-1 pb-8">
+                          <div className="flex-1 pb-4">
                             <div className="flex items-start justify-between mb-1">
                               <div>
-                                <p className="font-medium">{activity.title}</p>
+                                <p className="text-sm font-medium">{activity.title}</p>
                                 {activity.description && (
-                                  <p className="text-sm text-muted-foreground">{activity.description}</p>
+                                  <p className="text-xs text-muted-foreground">{activity.description}</p>
                                 )}
                               </div>
                               <span className="text-xs text-muted-foreground">
@@ -478,21 +459,21 @@ export default function LeadTimelinePage() {
                             
                             {/* Message content */}
                             {activity.content && (
-                              <div className={`mt-2 rounded-lg p-3 ${
+                              <div className={`mt-1 rounded-lg p-2 ${
                                 isMessage 
                                   ? activity.type === 'message_sent' 
                                     ? 'bg-blue-50 text-blue-900 ml-auto max-w-md' 
                                     : 'bg-gray-100 max-w-md'
                                   : 'bg-gray-50'
                               }`}>
-                                <p className="text-sm">{activity.content}</p>
+                                <p className="text-xs">{activity.content}</p>
                               </div>
                             )}
                             
                             {/* User info */}
                             {activity.user && (
-                              <div className="mt-2 flex items-center gap-2">
-                                <Avatar className="h-6 w-6">
+                              <div className="mt-1 flex items-center gap-2">
+                                <Avatar className="h-5 w-5">
                                   <AvatarFallback className="text-xs">
                                     {activity.user.name.split(' ').map(n => n[0]).join('')}
                                   </AvatarFallback>
@@ -500,6 +481,11 @@ export default function LeadTimelinePage() {
                                 <span className="text-xs text-muted-foreground">
                                   {activity.user.name}
                                 </span>
+                                {activity.channel && (
+                                  <Badge variant="outline" className="text-xs h-5">
+                                    {activity.channel}
+                                  </Badge>
+                                )}
                               </div>
                             )}
                           </div>
@@ -514,34 +500,34 @@ export default function LeadTimelinePage() {
         </div>
 
         {/* Message Composer & Lead Info */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Message Composer */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Mesaj Gönder</CardTitle>
+          <Card className="h-fit">
+            <CardHeader className="py-3">
+              <CardTitle className="text-base">Mesaj Gönder</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3">
               <Tabs value={messageType} onValueChange={(v) => setMessageType(v as any)}>
-                <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="chat">
-                    <MessageSquare className="h-4 w-4 mr-2" />
+                <TabsList className="grid w-full grid-cols-4 h-8">
+                  <TabsTrigger value="chat" className="text-xs">
+                    <MessageSquare className="h-3 w-3 mr-1" />
                     Chat
                   </TabsTrigger>
-                  <TabsTrigger value="email">
-                    <Mail className="h-4 w-4 mr-2" />
+                  <TabsTrigger value="email" className="text-xs">
+                    <Mail className="h-3 w-3 mr-1" />
                     Email
                   </TabsTrigger>
-                  <TabsTrigger value="note">
-                    <FileText className="h-4 w-4 mr-2" />
+                  <TabsTrigger value="note" className="text-xs">
+                    <FileText className="h-3 w-3 mr-1" />
                     Not
                   </TabsTrigger>
-                  <TabsTrigger value="task">
-                    <CheckSquare className="h-4 w-4 mr-2" />
+                  <TabsTrigger value="task" className="text-xs">
+                    <CheckSquare className="h-3 w-3 mr-1" />
                     Görev
                   </TabsTrigger>
                 </TabsList>
                 
-                <div className="mt-4 space-y-4">
+                <div className="mt-3 space-y-3">
                   <Textarea
                     placeholder={
                       messageType === 'chat' ? 'Mesajınızı yazın...' :
@@ -551,27 +537,28 @@ export default function LeadTimelinePage() {
                     }
                     value={messageText}
                     onChange={(e) => setMessageText(e.target.value)}
-                    className="min-h-[120px]"
+                    className="min-h-[80px] text-sm"
                   />
                   
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm">
-                        <Paperclip className="h-4 w-4" />
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                        <Paperclip className="h-3 w-3" />
                       </Button>
-                      <Button variant="ghost" size="sm">
-                        <AtSign className="h-4 w-4" />
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                        <AtSign className="h-3 w-3" />
                       </Button>
-                      <Button variant="ghost" size="sm">
-                        <Hash className="h-4 w-4" />
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                        <Hash className="h-3 w-3" />
                       </Button>
                     </div>
                     
                     <Button 
                       onClick={sendMessage}
                       disabled={sendingMessage || !messageText.trim()}
+                      size="sm"
                     >
-                      <Send className="h-4 w-4 mr-2" />
+                      <Send className="h-3 w-3 mr-1" />
                       Gönder
                     </Button>
                   </div>
@@ -582,45 +569,45 @@ export default function LeadTimelinePage() {
 
           {/* Lead Details */}
           <Card>
-            <CardHeader>
-              <CardTitle>Müşteri Detayları</CardTitle>
+            <CardHeader className="py-3">
+              <CardTitle className="text-base">Müşteri Detayları</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="p-3 space-y-3">
               {lead.pipeline && (
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Pipeline</p>
-                  <p className="text-sm">{lead.pipeline.name}</p>
+                  <p className="text-xs font-medium text-muted-foreground">Pipeline</p>
+                  <p className="text-xs">{lead.pipeline.name}</p>
                 </div>
               )}
               
               {lead.source && (
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Kaynak</p>
-                  <p className="text-sm">{lead.source}</p>
+                  <p className="text-xs font-medium text-muted-foreground">Kaynak</p>
+                  <p className="text-xs">{lead.source}</p>
                 </div>
               )}
               
               {lead.assigned_to && (
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Atanan</p>
-                  <p className="text-sm">{lead.assigned_to}</p>
+                  <p className="text-xs font-medium text-muted-foreground">Atanan</p>
+                  <p className="text-xs">{lead.assigned_to}</p>
                 </div>
               )}
               
               {lead.created_at && (
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Oluşturulma</p>
-                  <p className="text-sm">
-                    {format(new Date(lead.created_at), 'dd MMMM yyyy', { locale: tr })}
+                  <p className="text-xs font-medium text-muted-foreground">Oluşturulma</p>
+                  <p className="text-xs">
+                    {format(new Date(lead.created_at), 'dd MMM yyyy', { locale: tr })}
                   </p>
                 </div>
               )}
               
               {lead.follow_up_date && (
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">Takip Tarihi</p>
-                  <p className="text-sm">
-                    {format(new Date(lead.follow_up_date), 'dd MMMM yyyy', { locale: tr })}
+                  <p className="text-xs font-medium text-muted-foreground">Takip Tarihi</p>
+                  <p className="text-xs">
+                    {format(new Date(lead.follow_up_date), 'dd MMM yyyy', { locale: tr })}
                   </p>
                 </div>
               )}
