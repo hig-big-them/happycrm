@@ -124,6 +124,7 @@ export default function LeadTimelinePage() {
   const [messageText, setMessageText] = useState('');
   const [messageType, setMessageType] = useState<'chat' | 'email' | 'note' | 'task'>('chat');
   const [sendingMessage, setSendingMessage] = useState(false);
+  const timelineRef = React.useRef<HTMLDivElement>(null);
   
   const supabase = createClient();
 
@@ -358,6 +359,45 @@ export default function LeadTimelinePage() {
         throw error;
       }
 
+      // Anlık olarak timeline'a yeni mesajı ekle
+      const getActivityTypeAndTitle = () => {
+        switch (messageType) {
+          case 'note':
+            return { type: 'note_added' as ActivityType, title: 'Not eklendi' };
+          case 'task':
+            return { type: 'task_created' as ActivityType, title: 'Görev oluşturuldu' };
+          case 'email':
+            return { type: 'email_sent' as ActivityType, title: 'E-posta gönderildi' };
+          default:
+            return { type: 'message_sent' as ActivityType, title: 'WhatsApp mesajı gönderildi' };
+        }
+      };
+      
+      const { type, title } = getActivityTypeAndTitle();
+      
+      const newActivity: TimelineActivity = {
+        id: data.id,
+        type,
+        title,
+        content: messageText,
+        user: {
+          name: 'Siz', // Mevcut kullanıcı
+          email: ''
+        },
+        channel: messageType === 'chat' ? 'whatsapp' : messageType as any,
+        created_at: new Date().toISOString()
+      };
+
+      // Yeni aktiviteyi timeline'ın başına ekle
+      setActivities(prev => [newActivity, ...prev]);
+      
+      // Scroll'ı en üste kaydır
+      setTimeout(() => {
+        if (timelineRef.current) {
+          timelineRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }, 100);
+
       toast({
         title: "Başarılı",
         description: `${messageType === 'chat' ? 'WhatsApp mesajı' : 
@@ -367,8 +407,6 @@ export default function LeadTimelinePage() {
       });
       
       setMessageText('');
-      // Reload activities to show the new message
-      await loadTimelineActivities();
     } catch (error: any) {
       console.error('Error sending message:', error);
       toast({
@@ -467,7 +505,7 @@ export default function LeadTimelinePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="p-3">
-              <ScrollArea className="h-[calc(100vh-280px)] pr-2">
+              <ScrollArea ref={timelineRef} className="h-[calc(100vh-280px)] pr-2">
                 {loading ? (
                   <div className="flex items-center justify-center h-20">
                     <Activity className="h-6 w-6 animate-spin text-gray-400" />
@@ -482,9 +520,14 @@ export default function LeadTimelinePage() {
                       const Icon = getActivityIcon(activity.type);
                       const colorClass = getActivityColor(activity.type);
                       const isMessage = activity.type === 'message_sent' || activity.type === 'message_received';
+                      const isNewActivity = index === 0 && activity.id && activity.id.includes && activity.created_at && 
+                        new Date(activity.created_at).getTime() > Date.now() - 5000; // Son 5 saniyede eklenen
                       
                       return (
-                        <div key={activity.id} className="flex gap-3">
+                        <div 
+                          key={activity.id} 
+                          className={`flex gap-3 transition-all duration-500 ${isNewActivity ? 'animate-pulse bg-blue-50 dark:bg-blue-900/10 rounded-lg p-2 -m-2' : ''}`}
+                        >
                           {/* Timeline line */}
                           {index < activities.length - 1 && (
                             <div className="absolute ml-4 mt-8 h-full w-px bg-gray-200" />
