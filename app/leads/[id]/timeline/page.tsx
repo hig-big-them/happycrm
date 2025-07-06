@@ -160,7 +160,8 @@ export default function LeadTimelinePage() {
         return;
       }
 
-      const { data, error } = await supabase
+      // Try with joins first, fall back to basic query if joins fail
+      let { data, error } = await supabase
         .from('leads')
         .select(`
           *,
@@ -171,7 +172,19 @@ export default function LeadTimelinePage() {
         .eq('id', leadId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.warn('Join query failed, trying basic query:', error);
+        // Fallback to basic query without joins
+        const basicResult = await supabase
+          .from('leads')
+          .select('*')
+          .eq('id', leadId)
+          .single();
+        
+        if (basicResult.error) throw basicResult.error;
+        data = basicResult.data;
+      }
+      
       setLead(data);
     } catch (error) {
       console.error('Error loading lead:', error);
@@ -190,30 +203,67 @@ export default function LeadTimelinePage() {
       // Load real messages from the database
       const { data: messages, error: messagesError } = await supabase
         .from('messages')
-        .select(`
-          *,
-          sender:user_profiles!messages_sender_id_fkey(full_name, email)
-        `)
+        .select('*')
         .eq('lead_id', leadId)
         .order('created_at', { ascending: false });
 
-      if (messagesError) throw messagesError;
+      if (messagesError) {
+        console.error('Messages error:', messagesError);
+        throw messagesError;
+      }
+
+      // Get unique sender IDs to fetch user profiles separately
+      const senderIds = [...new Set(messages?.map(msg => msg.sender_id).filter(Boolean))] || [];
+      let userProfiles: any[] = [];
+      
+      if (senderIds.length > 0) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from('user_profiles')
+          .select('id, full_name, email')
+          .in('id', senderIds);
+        
+        if (!profilesError) {
+          userProfiles = profiles || [];
+        }
+      }
 
       // Convert messages to timeline activities
-      const messageActivities: TimelineActivity[] = messages?.map(msg => ({
-        id: msg.id,
-        type: msg.direction === 'outbound' ? 'message_sent' : 'message_received',
-        title: msg.direction === 'outbound' ? 'Mesaj gönderildi' : 'Mesaj alındı',
-        content: msg.content,
-        user: msg.sender ? {
-          name: msg.sender.full_name || msg.sender.email,
-          email: msg.sender.email
-        } : undefined,
-        channel: msg.channel as any,
-        created_at: msg.created_at
-      })) || [];
+      const messageActivities: TimelineActivity[] = messages?.map(msg => {
+        const sender = userProfiles.find(p => p.id === msg.sender_id);
+        return {
+          id: msg.id,
+          type: msg.direction === 'outbound' ? 'message_sent' : 'message_received',
+          title: msg.direction === 'outbound' ? 'Mesaj gönderildi' : 'Mesaj alındı',
+          content: msg.content,
+          user: sender ? {
+            name: sender.full_name || sender.email,
+            email: sender.email
+          } : {
+            name: 'Bilinmeyen Kullanıcı',
+            email: ''
+          },
+          channel: msg.channel as any,
+          created_at: msg.created_at
+        };
+      }) || [];
       
-      setActivities(messageActivities);
+      // Also add a lead creation activity if we have lead data
+      const additionalActivities: TimelineActivity[] = [];
+      
+      if (lead && messageActivities.length === 0) {
+        additionalActivities.push({
+          id: 'lead-created',
+          type: 'lead_created',
+          title: 'Müşteri oluşturuldu',
+          user: {
+            name: 'Sistem',
+            email: ''
+          },
+          created_at: lead.created_at
+        });
+      }
+      
+      setActivities([...messageActivities, ...additionalActivities]);
     } catch (error) {
       console.error('Error loading timeline:', error);
       toast({
@@ -282,26 +332,31 @@ export default function LeadTimelinePage() {
     
     setSendingMessage(true);
     try {
-      // Insert message into database
+      // Check if messages table exists and is accessible
+      const messageData = {
+        lead_id: leadId,
+        content: messageText,
+        channel: messageType === 'chat' ? 'whatsapp' : messageType as any,
+        direction: 'outbound' as const,
+        status: 'sent' as const,
+        recipient_phone: lead?.contact_phone || null,
+        recipient_email: lead?.contact_email || null,
+        metadata: {
+          source: 'timeline',
+          type: messageType
+        }
+      };
+      
       const { data, error } = await supabase
         .from('messages')
-        .insert({
-          lead_id: leadId,
-          content: messageText,
-          channel: messageType === 'chat' ? 'whatsapp' : messageType,
-          direction: 'outbound',
-          status: 'sent',
-          recipient_phone: lead?.contact_phone || null,
-          recipient_email: lead?.contact_email || null,
-          metadata: {
-            source: 'timeline',
-            type: messageType
-          }
-        })
+        .insert(messageData)
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
 
       toast({
         title: "Başarılı",
@@ -314,11 +369,11 @@ export default function LeadTimelinePage() {
       setMessageText('');
       // Reload activities to show the new message
       await loadTimelineActivities();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message:', error);
       toast({
         title: "Hata",
-        description: "Mesaj gönderilirken hata oluştu",
+        description: error?.message || "Mesaj gönderilirken hata oluştu",
         variant: "destructive"
       });
     } finally {
